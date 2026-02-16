@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:storyo/core/routes.dart';
 import 'package:storyo/screens/auth/login_screen.dart';
 import 'package:storyo/screens/auth/register_screen.dart';
+import 'package:storyo/screens/dashBoard/homePage.dart';
+import 'package:storyo/screens/on_boarding_screen/onBoardingScreen.dart';
+import 'package:storyo/screens/on_boarding_screen/onBoardingScreenSuccess.dart';
 import 'package:storyo/screens/on_boarding_screen/splash_screen.dart';
 
 void main() {
@@ -20,6 +23,9 @@ class MyApp extends StatelessWidget {
         MyRoutes.splashScreen:(context)=>Splashscreen(),
         MyRoutes.loginScreen:(context)=>LoginScreen(),
         MyRoutes.registerScreen:(context)=>RegisterScreen(),
+        MyRoutes.homePage:(context)=>Homepage(),
+        MyRoutes.onBoardingScreen:(context)=>Onboardingscreen(),
+        MyRoutes.onBoardingScreenSuccess:(context)=>Onboardingscreensuccess(),
       },
      
     );

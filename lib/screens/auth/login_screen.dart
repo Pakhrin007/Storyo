@@ -129,7 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           .make(),
                     ),
                   ).onInkTap(() {
-                    // TODO: Login logic
+                    Navigator.pushReplacementNamed(context, MyRoutes.onBoardingScreen);
                   }),
                 ),
 
