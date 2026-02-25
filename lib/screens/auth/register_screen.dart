@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:storyo/core/colors.dart';
-import 'package:storyo/core/routes.dart';
 import 'package:velocity_x/velocity_x.dart';
 
 class RegisterScreen extends StatefulWidget {

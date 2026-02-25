@@ -9,4 +9,6 @@ class MyRoutes{
   static String onBoardingScreenSuccess='/OnBoardingScreenSuccess';
 
   static String homePage="/HomePage";
+
+  static const settingsScreen = "/SettingsScreen";
 }
