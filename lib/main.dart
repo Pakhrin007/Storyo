@@ -6,6 +6,7 @@ import 'package:storyo/screens/dashBoard/homePage.dart';
 import 'package:storyo/screens/on_boarding_screen/onBoardingScreen.dart';
 import 'package:storyo/screens/on_boarding_screen/onBoardingScreenSuccess.dart';
 import 'package:storyo/screens/on_boarding_screen/splash_screen.dart';
+import 'package:storyo/screens/settings/settings_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -26,6 +27,7 @@ class MyApp extends StatelessWidget {
         MyRoutes.homePage:(context)=>Homepage(),
         MyRoutes.onBoardingScreen:(context)=>Onboardingscreen(),
         MyRoutes.onBoardingScreenSuccess:(context)=>Onboardingscreensuccess(),
+        MyRoutes.settingsScreen: (context) => const SettingsScreen(),
       },
      
     );
