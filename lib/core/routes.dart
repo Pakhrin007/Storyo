@@ -9,4 +9,5 @@ class MyRoutes{
   static String onBoardingScreenSuccess='/OnBoardingScreenSuccess';
 
   static String homePage="/HomePage";
+  static String explorePage="/ExplorePage";
 }
