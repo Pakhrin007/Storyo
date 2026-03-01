@@ -29,22 +29,24 @@ void initState() {
     return DefaultTabController(
       length: genres.length,
       child: Scaffold(
+        appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
+        centerTitle: true,
+        title: const Text(
+          'Explore ',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+      ),
         backgroundColor: AppColors.secondary,
         body: SafeArea(
           child: VStack(
             [
-              // Header Row
-              HStack(
-                [
-                  "Explore".text.white.bold.xl5.textStyle(TextStyle(fontFamily: 'libertin')).make(),
-                  const Spacer(),
-                  CircleAvatar(
-                    radius: 22,
-                    backgroundColor: Colors.white.withOpacity(0.06),
-                    child: const Icon(Icons.notifications_none, color: Colors.white),
-                  ),
-                ],
-              ).px16().py12(),
+          
 
               // Search bar
               _searchBar().px16(),

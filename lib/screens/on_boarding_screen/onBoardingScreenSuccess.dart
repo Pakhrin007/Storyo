@@ -130,7 +130,7 @@ class _Onboardingscreen2successState extends State<Onboardingscreensuccess>
                 ],
               ),
             ).px16().onInkTap(() {
-              Navigator.pushReplacementNamed(context, MyRoutes.explorePage);
+              Navigator.pushReplacementNamed(context, MyRoutes.homePage);
             }),
 
             16.heightBox,

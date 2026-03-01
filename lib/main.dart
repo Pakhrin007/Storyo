@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:storyo/core/routes.dart';
 import 'package:storyo/screens/auth/login_screen.dart';
 import 'package:storyo/screens/auth/register_screen.dart';
-import 'package:storyo/screens/dashBoard/homePage.dart';
+import 'package:storyo/screens/dashBoard/home/homePage.dart';
 import 'package:storyo/screens/explore/explore_screen.dart';
 import 'package:storyo/screens/on_boarding_screen/onBoardingScreen.dart';
 import 'package:storyo/screens/on_boarding_screen/onBoardingScreenSuccess.dart';
 import 'package:storyo/screens/on_boarding_screen/splash_screen.dart';
+import 'package:storyo/screens/profile/profile_screen.dart';
 import 'package:storyo/screens/settings/settings_screen.dart';
+import 'package:storyo/screens/story/create_story_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -28,7 +30,11 @@ class MyApp extends StatelessWidget {
         MyRoutes.homePage:(context)=>Homepage(),
         MyRoutes.onBoardingScreen:(context)=>Onboardingscreen(),
         MyRoutes.onBoardingScreenSuccess:(context)=>Onboardingscreensuccess(),
+        MyRoutes.settingsScreen:(context)=>SettingsScreen(),
         MyRoutes.explorePage:(context)=>ExploreScreen(),
+        MyRoutes.profilePage: (context) => const ProfileScreen(),
+        MyRoutes.createStoryPage: (context) => const CreateStoryScreen(),
+
       },
      
     );

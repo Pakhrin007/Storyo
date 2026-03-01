@@ -10,6 +10,8 @@ class MyRoutes{
 
   static String homePage="/HomePage";
   static String explorePage="/ExplorePage";
+  static const profilePage = "/ProfilePage";
+  static const createStoryPage = "/CreateStoryPage";
 
   static const settingsScreen = "/SettingsScreen";
 }
