@@ -10,4 +10,6 @@ class MyRoutes{
 
   static String homePage="/HomePage";
   static String explorePage="/ExplorePage";
+
+  static const settingsScreen = "/SettingsScreen";
 }

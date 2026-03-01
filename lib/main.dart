@@ -7,6 +7,7 @@ import 'package:storyo/screens/explore/explore_screen.dart';
 import 'package:storyo/screens/on_boarding_screen/onBoardingScreen.dart';
 import 'package:storyo/screens/on_boarding_screen/onBoardingScreenSuccess.dart';
 import 'package:storyo/screens/on_boarding_screen/splash_screen.dart';
+import 'package:storyo/screens/settings/settings_screen.dart';
 
 void main() {
   runApp(const MyApp());
