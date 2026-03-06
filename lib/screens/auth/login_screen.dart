@@ -1,6 +1,9 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:storyo/core/colors.dart';
 import 'package:storyo/core/routes.dart';
+import 'package:storyo/screens/auth/auth_service.dart';
 import 'package:velocity_x/velocity_x.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -11,6 +14,20 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _auth = AuthService();
+
+  final _name = TextEditingController();
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+
+   @override
+  void dispose(){
+    super.dispose();
+    _name.dispose();
+    _email.dispose();
+    _password.dispose();
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: TextFormField(
+                    controller: _email,
                     style: const TextStyle(color: AppColors.primary),
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.email, color: AppColors.primary),
@@ -73,6 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: TextFormField(
+                    controller: _password,
                     obscureText: true,
                     style: const TextStyle(color: AppColors.primary),
                     decoration: InputDecoration(
@@ -128,8 +147,16 @@ class _LoginScreenState extends State<LoginScreen> {
                           .lg
                           .make(),
                     ),
-                  ).onInkTap(() {
-                    Navigator.pushReplacementNamed(context, MyRoutes.onBoardingScreen);
+                  ).onInkTap(() async {
+                    final user  = await _auth.loginUserWithEmailAndPassword(_email.text.trim(), _password.text.trim());
+                    if (user != null){
+                      log("UserLoged In!!");
+                      Navigator.pushReplacementNamed(context, MyRoutes.onBoardingScreen);
+                    }else{
+                      ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Login Failed")),
+                      );
+                    }
                   }),
                 ),
 

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1008186092510",
+    "project_id": "storyo-48051",
+    "storage_bucket": "storyo-48051.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1008186092510:android:9981af204f85e406480b4f",
+        "android_client_info": {
+          "package_name": "com.example.storyo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA8_kgUwkMr-XwO5ZNg2NRTGVW0y-Pkp9A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,5 +1,8 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:storyo/core/colors.dart';
+import 'package:storyo/screens/auth/auth_service.dart';
 import 'package:velocity_x/velocity_x.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -10,6 +13,21 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+
+  final _auth = AuthService();
+
+  final _name = TextEditingController();
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+
+  @override
+  void dispose(){
+    super.dispose();
+    _name.dispose();
+    _email.dispose();
+    _password.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -47,6 +65,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Padding(
                   padding: EdgeInsets.only(left: 10, right: 10),
                   child: TextFormField(
+                    controller: _name,
                     style: TextStyle(color: AppColors.primary),
                     decoration: InputDecoration(
                       prefixIcon: Icon(Icons.email,color: AppColors.primary,),
@@ -81,6 +100,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Padding(
                   padding: EdgeInsets.only(left: 10, right: 10),
                   child: TextFormField(
+                    controller: _email,
                     style: const TextStyle(color: AppColors.primary),
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.email, color: AppColors.primary),
@@ -107,6 +127,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Padding(
                   padding: EdgeInsets.only(left: 10, right: 10),
                   child: TextFormField(
+                    controller: _password,
+                    obscureText: true,
                     style: const TextStyle(color: AppColors.primary),
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.email, color: AppColors.primary),
@@ -156,12 +178,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                               )
                               .make()
-                              // // .onInkTap(() {
-                              // //   Navigator.pushReplacementNamed(
-                              // //     context,
-                              // //     '/ForgotPasswordScreen',
-                              // //   );
-                              // }),
+                              .onInkTap(() async {
+                                final user = await _auth.createUserWithEmailAndPassword(
+                                _email.text.trim(),
+                                _password.text.trim(),
+                                 );
+
+  if (user != null) {
+    log("User Created Successfully!");
+    Navigator.pushReplacementNamed(context, '/LoginScreen');
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Signup Failed")),
+    );
+  }
+})
                         ),
                       ),
                     ),
@@ -195,5 +226,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       ),
     );
+    
   }
 }
