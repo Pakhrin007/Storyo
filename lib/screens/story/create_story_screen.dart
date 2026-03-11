@@ -149,6 +149,10 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       final docRef = FirebaseFirestore.instance.collection('stories').doc();
       final storyId = docRef.id;
 
+      final authorName = user.displayName?.trim().isNotEmpty == true
+          ? user.displayName!.trim()
+          : (user.email?.split('@').first ?? 'User');
+
       await docRef.set({
         'id': storyId,
         'title': title,
@@ -160,6 +164,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
         'pdfFileName': _pdfFileName,
         'authorId': user.uid,
         'authorEmail': user.email,
+        'authorName': authorName,
         'status': 'published',
         'format': 'pdf',
         'createdAt': FieldValue.serverTimestamp(),

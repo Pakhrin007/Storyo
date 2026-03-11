@@ -1,18 +1,105 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:storyo/core/colors.dart';
 import 'package:storyo/core/routes.dart';
+import 'package:storyo/models/story_model.dart';
+import 'package:storyo/screens/reader/reader_screen.dart';
 import 'package:velocity_x/velocity_x.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool loading = true;
+  List<StoryModel> stories = [];
+
+  String name = "";
+  String email = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user == null) {
+        setState(() {
+          loading = false;
+        });
+        return;
+      }
+
+      email = user.email ?? "";
+
+      // Try getting extra user info from Firestore users collection
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (userDoc.exists) {
+        final data = userDoc.data()!;
+        name = (data['name'] ?? data['fullName'] ?? user.displayName ?? "")
+            .toString();
+        email = (data['email'] ?? user.email ?? "").toString();
+      } else {
+        name = user.displayName ?? "User";
+      }
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('stories')
+          .where('authorId', isEqualTo: user.uid)
+          .where('status', isEqualTo: 'published')
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      final loadedStories = snapshot.docs
+          .map((doc) => StoryModel.fromFirestore(doc.data(), doc.id))
+          .toList();
+
+      setState(() {
+        stories = loadedStories;
+        loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        loading = false;
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to load profile: $e")),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final username = email.isNotEmpty && email.contains('@')
+        ? email.split('@').first
+        : name.toLowerCase().replaceAll(" ", "_");
+
+    if (loading) {
+      return const Scaffold(
+        backgroundColor: AppColors.secondary,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.secondary,
       body: SafeArea(
         child: VStack([
-          // Top row (back + title + settings)
+          // Top row
           HStack([
             Icon(
               Icons.arrow_back_ios_new,
@@ -26,136 +113,116 @@ class ProfileScreen extends StatelessWidget {
             }),
           ]).px8().py4(),
 
-          10.heightBox,
+          12.heightBox,
 
           // Avatar
-          ZStack([
-            CircleAvatar(
-              radius: 52,
-              backgroundColor: Colors.deepPurple.withOpacity(0.25),
-              child: const CircleAvatar(
-                radius: 48,
-                backgroundImage: AssetImage(
-                  "assets/logo/storyo.png",
-                ), // replace later
+          CircleAvatar(
+            radius: 52,
+            backgroundColor: Colors.white.withOpacity(0.08),
+            child: CircleAvatar(
+              radius: 48,
+              backgroundColor: AppColors.accent,
+              child: Text(
+                name.isNotEmpty ? name[0].toUpperCase() : "U",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 30,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-            Positioned(
-              right: 0,
-              bottom: 0,
-              child: CircleAvatar(
-                radius: 18,
-                backgroundColor: Colors.deepPurple,
-                child: const Icon(Icons.edit, color: Colors.white, size: 16),
-              ),
-            ),
-          ]).centered(),
+          ).centered(),
 
           16.heightBox,
 
-          "Elena Rose".text.white.bold.xl4.make().centered(),
+          name.text.white.bold.xl3.make().centered(),
           6.heightBox,
-          "@elenarose_writes".text
-              .color(Colors.deepPurpleAccent)
+
+          ("@$username")
+              .text
+              .color(AppColors.accent)
               .semiBold
               .lg
               .make()
               .centered(),
-          12.heightBox,
 
-          "Storyteller & Dreamer. Exploring the world\nthrough words and forgotten memories."
-              .text
-              .color(Colors.white60)
-              .align(TextAlign.center)
-              .make()
-              .px24(),
+          if (email.isNotEmpty) ...[
+            8.heightBox,
+            email.text.color(Colors.white60).make().centered(),
+          ],
 
-          18.heightBox,
+          20.heightBox,
 
-          // Edit profile button
-          Container(
-            height: 52,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.deepPurpleAccent,
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: "Edit Profile".text.white.bold.lg.makeCentered(),
-          ).px16(),
-
-          16.heightBox,
-
-          // Stats
+          // Only stories stat
           HStack([
-            _statBox("1.2K", "FOLLOWERS"),
-            10.widthBox,
-            _statBox("450", "FOLLOWING"),
-            10.widthBox,
-            _statBox("18", "STORIES"),
+            _statBox(stories.length.toString(), "STORIES"),
           ]).px16(),
 
-          18.heightBox,
+          20.heightBox,
 
-          // ✅ Only My Stories title (Reading list removed)
           "My Stories".text.white.bold.xl2.make().px16(),
           12.heightBox,
 
-          // Stories list
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
-              children: [
-                _storyCard(
-                  date: "PUBLISHED JAN 12, 2024",
-                  title: "The Silent Echoes",
-                  subtitle:
-                      "A mystery novel exploring the depths of forgotten childhood...",
-                ),
-                12.heightBox,
-                _storyCard(
-                  date: "PUBLISHED NOV 28, 2023",
-                  title: "Paper Airplanes",
-                  subtitle:
-                      "Short stories about the fleeting nature of first love and long...",
-                ),
-                12.heightBox,
-                _storyCard(
-                  date: "PUBLISHED OCT 05, 2023",
-                  title: "The Last Constellation",
-                  subtitle:
-                      "Sci-fi adventure set in a world where stars are fading from...",
-                ),
-              ],
-            ),
+            child: stories.isEmpty
+                ? Center(
+                    child: "No published stories yet"
+                        .text
+                        .color(Colors.white60)
+                        .lg
+                        .make(),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+                    itemCount: stories.length,
+                    itemBuilder: (context, index) {
+                      final story = stories[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _StoryCard(
+                          story: story,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ReaderScreen(story: story),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  ),
           ),
         ]),
       ),
 
-      // Create story button (bottom)
       bottomSheet: Container(
         color: AppColors.secondary,
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-        child:
-            Container(
-              height: 56,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.deepPurpleAccent,
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: HStack([
-                const Icon(Icons.add, color: Colors.white),
-                10.widthBox,
-                "Create Story".text.white.bold.xl.make(),
-              ], alignment: MainAxisAlignment.center),
-            ).onInkTap(() {
-              Navigator.pushNamed(context, MyRoutes.createStoryPage);
-            }),
+        child: Container(
+          height: 56,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.deepPurpleAccent,
+            borderRadius: BorderRadius.circular(30),
+          ),
+          child: HStack(
+            [
+              const Icon(Icons.add, color: Colors.white),
+              10.widthBox,
+              "Create Story".text.white.bold.xl.make(),
+            ],
+            alignment: MainAxisAlignment.center,
+          ),
+        ).onInkTap(() {
+          Navigator.pushNamed(context, MyRoutes.createStoryPage);
+        }),
       ),
     );
   }
 
-  static Widget _statBox(String value, String label) {
+  Widget _statBox(String value, String label) {
     return Expanded(
       child: Container(
         height: 78,
@@ -172,59 +239,83 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
   }
+}
 
-  static Widget _storyCard({
-    required String date,
-    required String title,
-    required String subtitle,
-  }) {
+class _StoryCard extends StatelessWidget {
+  final StoryModel story;
+  final VoidCallback onTap;
+
+  const _StoryCard({
+    required this.story,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withOpacity(0.10)),
       ),
-      child: HStack([
-        Expanded(
-          child: VStack([
-            date.text.color(Colors.white38).sm.make(),
-            8.heightBox,
-            title.text.white.bold.xl.make(),
-            8.heightBox,
-            subtitle.text.color(Colors.white60).make(),
-          ], crossAlignment: CrossAxisAlignment.start),
-        ),
-        14.widthBox,
-        ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            height: 86,
-            width: 86,
-            color: Colors.white.withOpacity(0.12),
-            child: const Icon(Icons.image_outlined, color: Colors.white38),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius:
+                const BorderRadius.horizontal(left: Radius.circular(18)),
+            child: Image.network(
+              story.coverUrl,
+              width: 90,
+              height: 120,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) {
+                return Container(
+                  width: 90,
+                  height: 120,
+                  color: Colors.white10,
+                  child: const Icon(
+                    Icons.broken_image,
+                    color: Colors.white54,
+                  ),
+                );
+              },
+            ),
           ),
-        ),
-      ]),
-    );
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: VStack(
+                [
+                  Text(
+                    story.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  6.heightBox,
+                  Text(
+                    story.author,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white60),
+                  ),
+                  6.heightBox,
+                  Text(
+                    "Genre: ${story.genre}",
+                    style: const TextStyle(color: Colors.white54),
+                  ),
+                ],
+                crossAlignment: CrossAxisAlignment.start,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ).onInkTap(onTap);
   }
-
-  // static Widget _pill(IconData icon, String text) {
-  //   return Container(
-  //     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-  //     decoration: BoxDecoration(
-  //       color: Colors.black.withOpacity(0.25),
-  //       borderRadius: BorderRadius.circular(14),
-  //       border: Border.all(color: Colors.white.withOpacity(0.08)),
-  //     ),
-  //     child: HStack(
-  //       [
-  //         Icon(icon, color: Colors.white54, size: 16),
-  //         6.widthBox,
-  //         text.text.color(Colors.white70).make(),
-  //       ],
-  //       axisSize: MainAxisSize.min,
-  //     ),
-  //   );
-  // }
 }
