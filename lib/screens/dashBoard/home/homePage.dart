@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:storyo/core/routes.dart';
 import 'package:storyo/data/home_itemds.dart';
 import 'package:storyo/screens/reader/reader_screen.dart';
-import 'package:storyo/data/story_data.dart'; // for StoryItem model (reuse)
+import 'package:storyo/models/story_model.dart'; // for StoryItem model (reuse)
 import 'package:storyo/widgets/bottom_nav.dart';
 import 'package:storyo/widgets/featured_card.dart';
 import 'package:storyo/widgets/just_added_title.dart';
@@ -10,8 +10,6 @@ import 'package:storyo/widgets/search_bar.dart';
 import 'package:storyo/widgets/section_header.dart';
 import 'package:storyo/widgets/top_bar.dart';
 import 'package:storyo/widgets/trending_card.dart';
-
-
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -27,19 +25,19 @@ class _HomepageState extends State<Homepage> {
   int _selectedGenre = 0;
 
   void _openPdf(HomePdfItem item) {
-    // ✅ Reuse your StoryItem model for ReaderScreen
-    final story = StoryItem(
+    final story = StoryModel(
       id: item.title,
       title: item.title,
-      author: item.author,
       genre: "Home",
-      coverAsset: item.coverAsset,
-      pdfAsset: item.pdfAsset,
+      author: item.author,
+      coverUrl: item.coverAsset,
+      pdfUrl: item.pdfAsset,
+      isAsset: true,
     );
 
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => ReaderScreen(item: story)),
+      MaterialPageRoute(builder: (_) => ReaderScreen(story: story)),
     );
   }
 
@@ -58,10 +56,7 @@ class _HomepageState extends State<Homepage> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
                 children: [
-                  SearchBarWidget(
-                    onChanged: (v) {},
-                    onTap: () {},
-                  ),
+                  SearchBarWidget(onChanged: (v) {}, onTap: () {}),
                   const SizedBox(height: 14),
 
                   FeaturedCard(
@@ -85,21 +80,25 @@ class _HomepageState extends State<Homepage> {
                         final selected = i == _selectedGenre;
                         return Padding(
                           padding: EdgeInsets.only(
-                              right: i == _genres.length - 1 ? 0 : 10),
+                            right: i == _genres.length - 1 ? 0 : 10,
+                          ),
                           child: ChoiceChip(
                             label: Text(_genres[i]),
                             selected: selected,
-                            onSelected: (_) => setState(() => _selectedGenre = i),
+                            onSelected: (_) =>
+                                setState(() => _selectedGenre = i),
                             labelStyle: TextStyle(
                               color: selected ? Colors.black : Colors.white70,
                               fontWeight: FontWeight.w600,
                             ),
                             selectedColor: const Color(0xFF1E88FF),
                             backgroundColor: const Color(0xFF1A1A1A),
-                            side:
-                                BorderSide(color: Colors.white.withOpacity(0.06)),
+                            side: BorderSide(
+                              color: Colors.white.withOpacity(0.06),
+                            ),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(18)),
+                              borderRadius: BorderRadius.circular(18),
+                            ),
                           ),
                         );
                       }),
@@ -131,14 +130,16 @@ class _HomepageState extends State<Homepage> {
                   const TextOnlyHeader("Just Added"),
                   const SizedBox(height: 10),
 
-                  ...justAddedItems.map((item) => Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: JustAddedTile(
-                          item: item,
-                          tag: "Story",
-                          onTap: () => _openPdf(item),
-                        ),
-                      )),
+                  ...justAddedItems.map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: JustAddedTile(
+                        item: item,
+                        tag: "Story",
+                        onTap: () => _openPdf(item),
+                      ),
+                    ),
+                  ),
 
                   const SizedBox(height: 90),
                 ],
@@ -147,7 +148,7 @@ class _HomepageState extends State<Homepage> {
           ],
         ),
       ),
-      
+
       bottomNavigationBar: BottomNav(
         index: _tabIndex,
         onChanged: (i) {

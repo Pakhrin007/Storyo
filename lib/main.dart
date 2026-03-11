@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'package:flutter/material.dart';
 import 'package:storyo/core/routes.dart';
 import 'package:storyo/screens/auth/login_screen.dart';
@@ -12,9 +13,11 @@ import 'package:storyo/screens/profile/profile_screen.dart';
 import 'package:storyo/screens/settings/settings_screen.dart';
 import 'package:storyo/screens/story/create_story_screen.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
   runApp(const MyApp());
 }
 
@@ -25,21 +28,20 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      initialRoute:MyRoutes.splashScreen ,
+      initialRoute: MyRoutes.splashScreen,
       routes: {
-        MyRoutes.splashScreen:(context)=>Splashscreen(),
-        MyRoutes.loginScreen:(context)=>LoginScreen(),
-        MyRoutes.registerScreen:(context)=>RegisterScreen(),
-        MyRoutes.homePage:(context)=>Homepage(),
-        MyRoutes.onBoardingScreen:(context)=>Onboardingscreen(),
-        MyRoutes.onBoardingScreenSuccess:(context)=>Onboardingscreensuccess(),
-        MyRoutes.settingsScreen:(context)=>SettingsScreen(),
-        MyRoutes.explorePage:(context)=>ExploreScreen(),
+        MyRoutes.splashScreen: (context) => Splashscreen(),
+        MyRoutes.loginScreen: (context) => LoginScreen(),
+        MyRoutes.registerScreen: (context) => RegisterScreen(),
+        MyRoutes.homePage: (context) => Homepage(),
+        MyRoutes.onBoardingScreen: (context) => Onboardingscreen(),
+        MyRoutes.onBoardingScreenSuccess: (context) =>
+            Onboardingscreensuccess(),
+        MyRoutes.settingsScreen: (context) => SettingsScreen(),
+        MyRoutes.explorePage: (context) => ExploreScreen(),
         MyRoutes.profilePage: (context) => const ProfileScreen(),
         MyRoutes.createStoryPage: (context) => const CreateStoryScreen(),
-
       },
-     
     );
   }
 }

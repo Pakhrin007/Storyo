@@ -1,6 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:storyo/core/colors.dart';
-import 'package:storyo/data/story_data.dart';
+import 'package:storyo/models/story_model.dart';
 import 'package:storyo/screens/reader/reader_screen.dart';
 import 'package:velocity_x/velocity_x.dart';
 
@@ -13,80 +14,148 @@ class ExploreScreen extends StatefulWidget {
 
 class _ExploreScreenState extends State<ExploreScreen> {
   String query = "";
+  List<StoryModel> stories = [];
+  List<String> genres = [];
+  bool loading = true;
 
   @override
-void initState() {
-  super.initState();
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    for (final s in stories) {
-      precacheImage(AssetImage(s.coverAsset), context);
+  void initState() {
+    super.initState();
+    fetchStories();
+  }
+
+  Future<void> fetchStories() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('stories')
+          .where('status', isEqualTo: 'published')
+          .get();
+
+      final loadedStories = snapshot.docs
+          .map((doc) => StoryModel.fromFirestore(doc.data(), doc.id))
+          .toList();
+
+      final genreSet = <String>{};
+      for (final story in loadedStories) {
+        if (story.genre.trim().isNotEmpty) {
+          genreSet.add(story.genre);
+        }
+      }
+
+      setState(() {
+        stories = loadedStories;
+        genres = genreSet.toList();
+        loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        loading = false;
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to load stories: $e")));
     }
-  });
-}
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (loading) {
+      return const Scaffold(
+        backgroundColor: AppColors.secondary,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (genres.isEmpty) {
+      return Scaffold(
+        backgroundColor: AppColors.secondary,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.white,
+            ),
+            onPressed: () => Navigator.of(context).maybePop(),
+          ),
+          centerTitle: true,
+          title: const Text(
+            'Explore',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+        ),
+        body: const Center(
+          child: Text(
+            "No stories found",
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+    }
+
     return DefaultTabController(
       length: genres.length,
       child: Scaffold(
         appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
-          onPressed: () => Navigator.of(context).maybePop(),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.white,
+            ),
+            onPressed: () => Navigator.of(context).maybePop(),
+          ),
+          centerTitle: true,
+          title: const Text(
+            'Explore',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
         ),
-        centerTitle: true,
-        title: const Text(
-          'Explore ',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-        ),
-      ),
         backgroundColor: AppColors.secondary,
         body: SafeArea(
-          child: VStack(
-            [
-          
-
-              // Search bar
-              _searchBar().px16(),
-              16.heightBox,
-
-              // Tabs
-              TabBar(
-                isScrollable: true,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white70,
-                dividerColor: Colors.transparent,
-                indicator: BoxDecoration(
-                  color: AppColors.accent,
-                  borderRadius: BorderRadius.circular(22),
-                ),
-                tabs: genres
-                    .map((g) => Tab(child: g.text.semiBold.lg.textStyle(TextStyle(fontFamily: 'libertin')).make().px16().py8()))
-                    .toList(),
-              ).px12(),
-
-              18.heightBox,
-
-              // Section title
-              HStack(
-                [
-                  "Discover New Stories".text.white.bold.xl2.textStyle(TextStyle(fontFamily: 'libertin')).make(),
-                  const Spacer(),
-                  "See all".text.color(AppColors.accent).semiBold.lg.make(),
-                ],
-              ).px16(),
-
-              14.heightBox,
-
-              Expanded(
-                child: TabBarView(
-                  children: genres.map((g) => _gridForGenre(g)).toList(),
-                ),
+          child: VStack([
+            _searchBar().px16(),
+            16.heightBox,
+            TabBar(
+              isScrollable: true,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white70,
+              dividerColor: Colors.transparent,
+              indicator: BoxDecoration(
+                color: AppColors.accent,
+                borderRadius: BorderRadius.circular(22),
               ),
-            ],
-          ),
+              tabs: genres
+                  .map(
+                    (g) => Tab(
+                      child: g.text.semiBold.lg
+                          .textStyle(const TextStyle(fontFamily: 'libertin'))
+                          .make()
+                          .px16()
+                          .py8(),
+                    ),
+                  )
+                  .toList(),
+            ).px12(),
+            18.heightBox,
+            HStack([
+              "Discover New Stories".text.white.bold.xl2
+                  .textStyle(const TextStyle(fontFamily: 'libertin'))
+                  .make(),
+              const Spacer(),
+              "See all".text.color(AppColors.accent).semiBold.lg.make(),
+            ]).px16(),
+            14.heightBox,
+            Expanded(
+              child: TabBarView(
+                children: genres.map((g) => _gridForGenre(g)).toList(),
+              ),
+            ),
+          ]),
         ),
       ),
     );
@@ -106,7 +175,10 @@ void initState() {
           borderRadius: BorderRadius.circular(30),
           borderSide: BorderSide.none,
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
     );
   }
@@ -115,10 +187,20 @@ void initState() {
     final filtered = stories.where((s) {
       if (s.genre != genre) return false;
       if (query.isEmpty) return true;
+
       return s.title.toLowerCase().contains(query) ||
           s.author.toLowerCase().contains(query) ||
           s.genre.toLowerCase().contains(query);
     }).toList();
+
+    if (filtered.isEmpty) {
+      return const Center(
+        child: Text(
+          "No stories found in this genre",
+          style: TextStyle(color: Colors.white70),
+        ),
+      );
+    }
 
     return GridView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -133,41 +215,43 @@ void initState() {
     );
   }
 
-  Widget _storyCard(StoryItem item) {
-    return VStack(
-      [
-        Stack(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(22),
-              child: Image.asset(
-                item.coverAsset,
-                height: 220,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
+  Widget _storyCard(StoryModel item) {
+    return VStack([
+      Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(22),
+            child: Image.network(
+              item.coverUrl,
+              height: 220,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) {
+                return Container(
+                  height: 220,
+                  width: double.infinity,
+                  color: Colors.white10,
+                  child: const Icon(
+                    Icons.broken_image,
+                    color: Colors.white54,
+                    size: 40,
+                  ),
+                );
+              },
             ),
-            // Positioned(
-            //   top: 12,
-            //   right: 12,
-            //   child: CircleAvatar(
-            //     radius: 18,
-            //     backgroundColor: Colors.black.withOpacity(0.35),
-            //     child: const Icon(Icons.bookmark_border, color: Colors.white, size: 18),
-            //   ),
-            // ),
-          ],
-        ),
-        12.heightBox,
-        item.title.text.white.bold.xl.textStyle(TextStyle(fontFamily: 'libertin')).make(),
-        6.heightBox,
-        item.author.text.color(Colors.white60).lg.make(),
-      ],
-      crossAlignment: CrossAxisAlignment.start,
-    ).onInkTap(() {
+          ),
+        ],
+      ),
+      12.heightBox,
+      item.title.text.white.bold.xl
+          .textStyle(const TextStyle(fontFamily: 'libertin'))
+          .make(),
+      6.heightBox,
+      item.author.text.color(Colors.white60).lg.make(),
+    ], crossAlignment: CrossAxisAlignment.start).onInkTap(() {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => ReaderScreen(item: item)),
+        MaterialPageRoute(builder: (_) => ReaderScreen(story: item)),
       );
     });
   }

@@ -20,14 +20,13 @@ class _LoginScreenState extends State<LoginScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
 
-   @override
-  void dispose(){
+  @override
+  void dispose() {
     super.dispose();
     _name.dispose();
     _email.dispose();
     _password.dispose();
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -39,22 +38,13 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-
                 20.heightBox,
 
-                Image.asset(
-                  "assets/logo/storyo.png",
-                  height: 150,
-                ),
+                Image.asset("assets/logo/storyo.png", height: 150),
 
                 10.heightBox,
 
-                "Welcome Back!!!"
-                    .text
-                    .color(AppColors.primary)
-                    .xl2
-                    .bold
-                    .make(),
+                "Welcome Back!!!".text.color(AppColors.primary).xl2.bold.make(),
 
                 30.heightBox,
 
@@ -65,7 +55,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     controller: _email,
                     style: const TextStyle(color: AppColors.primary),
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.email, color: AppColors.primary),
+                      prefixIcon: const Icon(
+                        Icons.email,
+                        color: AppColors.primary,
+                      ),
                       labelText: "Enter Your Email",
                       labelStyle: const TextStyle(color: AppColors.primary),
                       hintText: "E-mail",
@@ -95,7 +88,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     obscureText: true,
                     style: const TextStyle(color: AppColors.primary),
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.lock, color: AppColors.primary),
+                      prefixIcon: const Icon(
+                        Icons.lock,
+                        color: AppColors.primary,
+                      ),
                       labelText: "Enter Your Password",
                       labelStyle: const TextStyle(color: AppColors.primary),
                       hintText: "Password",
@@ -120,8 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 /// 🔹 Forgot Password
                 Align(
                   alignment: Alignment.centerRight,
-                  child: "Forgot Password?"
-                      .text
+                  child: "Forgot Password?".text
                       .color(Colors.white70)
                       .make()
                       .px16(),
@@ -132,32 +127,41 @@ class _LoginScreenState extends State<LoginScreen> {
                 /// 🔹 LOGIN BUTTON
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Container(
-                    height: 50,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: AppColors.accent,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Center(
-                      child: "Login"
-                          .text
-                          .color(AppColors.primary)
-                          .bold
-                          .lg
-                          .make(),
-                    ),
-                  ).onInkTap(() async {
-                    final user  = await _auth.loginUserWithEmailAndPassword(_email.text.trim(), _password.text.trim());
-                    if (user != null){
-                      log("UserLoged In!!");
-                      Navigator.pushReplacementNamed(context, MyRoutes.onBoardingScreen);
-                    }else{
-                      ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Login Failed")),
-                      );
-                    }
-                  }),
+                  child:
+                      Container(
+                        height: 50,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: AppColors.accent,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Center(
+                          child: "Login".text
+                              .color(AppColors.primary)
+                              .bold
+                              .lg
+                              .make(),
+                        ),
+                      ).onInkTap(() async {
+                        final user = await _auth.loginUserWithEmailAndPassword(
+                          _email.text.trim(),
+                          _password.text.trim(),
+                        );
+
+                        if (!context.mounted) return;
+
+                        if (user != null) {
+                          log("User Logged In!!");
+                          Navigator.pushReplacementNamed(
+                            context,
+                            MyRoutes.onBoardingScreen,
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Login Failed")),
+                          );
+                        }
+                      }),
                 ),
 
                 25.heightBox,
@@ -166,10 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Row(
                   children: [
                     const Expanded(child: Divider(color: Colors.white24)),
-                    "  Or  "
-                        .text
-                        .color(Colors.white70)
-                        .make(),
+                    "  Or  ".text.color(Colors.white70).make(),
                     const Expanded(child: Divider(color: Colors.white24)),
                   ],
                 ).px16(),
@@ -179,28 +180,43 @@ class _LoginScreenState extends State<LoginScreen> {
                 /// 🔹 Google Login
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Container(
-                    height: 50,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white24),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Image.asset(
-                          'assets/auth/google.png',
-                          height: 24,
+                  child:
+                      Container(
+                        height: 50,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white24),
                         ),
-                        10.widthBox,
-                        "Login Using Google"
-                            .text
-                            .color(AppColors.primary)
-                            .bold
-                            .make(),
-                      ],
-                    ),
-                  ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Image.asset('assets/auth/google.png', height: 24),
+                            10.widthBox,
+                            "Login Using Google".text
+                                .color(AppColors.primary)
+                                .bold
+                                .make(),
+                          ],
+                        ),
+                      ).onInkTap(() async {
+                        final user = await _auth.signInWithGoogle();
+
+                        if (!context.mounted) return;
+
+                        if (user != null) {
+                          log("Google Login Success");
+                          Navigator.pushReplacementNamed(
+                            context,
+                            MyRoutes.onBoardingScreen,
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Google Login Failed"),
+                            ),
+                          );
+                        }
+                      }),
                 ),
 
                 20.heightBox,
@@ -209,19 +225,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    "Don't Have Account?"
-                        .text
-                        .color(Colors.white70)
-                        .make(),
+                    "Don't Have Account?".text.color(Colors.white70).make(),
                     5.widthBox,
-                    "SignUp"
-                        .text
-                        .color(AppColors.accent)
-                        .bold
-                        .make()
-                        .onInkTap(() {
-                          Navigator.pushReplacementNamed(context, "/RegisterScreen");
-                        }),
+                    "SignUp".text.color(AppColors.accent).bold.make().onInkTap(
+                      () {
+                        Navigator.pushReplacementNamed(
+                          context,
+                          "/RegisterScreen",
+                        );
+                      },
+                    ),
                   ],
                 ),
 
