@@ -208,7 +208,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         crossAxisCount: 2,
         mainAxisSpacing: 18,
         crossAxisSpacing: 16,
-        childAspectRatio: 0.62,
+        childAspectRatio: 0.50,
       ),
       itemCount: filtered.length,
       itemBuilder: (context, i) => _storyCard(filtered[i]),

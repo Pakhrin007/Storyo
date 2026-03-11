@@ -43,7 +43,7 @@ dependencies:
   cloud_firestore: ^6.1.2
   image_picker: ^1.1.2
   http: ^1.2.2
-  file_picker: ^5.2.7
+  file_picker: ^10.3.10
   syncfusion_flutter_pdfviewer: ^32.2.9
 
 dev_dependencies:
@@ -75,7 +75,6 @@ flutter:
     - assets/onBoard/
     - assets/covers/
     - assets/pdfs/
-    - assets/pages/
     - assets/home/
   #   - images/a_dot_ham.jpeg
 
