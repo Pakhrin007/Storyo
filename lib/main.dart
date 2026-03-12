@@ -12,6 +12,7 @@ import 'package:storyo/screens/on_boarding_screen/splash_screen.dart';
 import 'package:storyo/screens/profile/profile_screen.dart';
 import 'package:storyo/screens/settings/settings_screen.dart';
 import 'package:storyo/screens/story/create_story_screen.dart';
+import 'package:storyo/screens/library/library_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,6 +40,7 @@ class MyApp extends StatelessWidget {
             Onboardingscreensuccess(),
         MyRoutes.settingsScreen: (context) => SettingsScreen(),
         MyRoutes.explorePage: (context) => ExploreScreen(),
+        MyRoutes.libraryPage: (context) => const LibraryScreen(),
         MyRoutes.profilePage: (context) => const ProfileScreen(),
         MyRoutes.createStoryPage: (context) => const CreateStoryScreen(),
       },

@@ -12,6 +12,7 @@ class MyRoutes{
   static String explorePage="/ExplorePage";
   static const profilePage = "/ProfilePage";
   static const createStoryPage = "/CreateStoryPage";
+  static const libraryPage = "/LibraryPage";
 
   static const settingsScreen = "/SettingsScreen";
 }

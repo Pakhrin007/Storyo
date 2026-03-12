@@ -152,14 +152,21 @@ class _HomepageState extends State<Homepage> {
       bottomNavigationBar: BottomNav(
         index: _tabIndex,
         onChanged: (i) {
-          if (i == 3) {
-            Navigator.pushNamed(context, MyRoutes.profilePage);
-            return;
-          }
           if (i == 1) {
             Navigator.pushNamed(context, MyRoutes.explorePage);
             return;
           }
+
+          if (i == 2) {
+            Navigator.pushNamed(context, MyRoutes.libraryPage);
+            return;
+          }
+
+          if (i == 3) {
+            Navigator.pushNamed(context, MyRoutes.profilePage);
+            return;
+          }
+
           setState(() => _tabIndex = i);
         },
       ),
