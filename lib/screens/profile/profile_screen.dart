@@ -5,6 +5,8 @@ import 'package:storyo/core/colors.dart';
 import 'package:storyo/core/routes.dart';
 import 'package:storyo/models/story_model.dart';
 import 'package:storyo/screens/reader/reader_screen.dart';
+import 'package:storyo/screens/search/search_users_screen.dart';
+import 'package:storyo/services/follow_service.dart';
 import 'package:velocity_x/velocity_x.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -20,6 +22,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   String name = "";
   String email = "";
+  int _followerCount = 0;
+  int _followingCount = 0;
+
+  final FollowService _followService = FollowService();
 
   @override
   void initState() {
@@ -55,19 +61,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
         name = user.displayName ?? "User";
       }
 
-      final snapshot = await FirebaseFirestore.instance
-          .collection('stories')
-          .where('authorId', isEqualTo: user.uid)
-          .where('status', isEqualTo: 'published')
-          .orderBy('createdAt', descending: true)
-          .get();
+      final results = await Future.wait([
+        FirebaseFirestore.instance
+            .collection('stories')
+            .where('authorId', isEqualTo: user.uid)
+            .where('status', isEqualTo: 'published')
+            .orderBy('createdAt', descending: true)
+            .get(),
+        _followService.getFollowerCount(user.uid),
+        _followService.getFollowingCount(user.uid),
+      ]);
 
-      final loadedStories = snapshot.docs
+      final storySnap = results[0] as QuerySnapshot<Map<String, dynamic>>;
+      final followerCount = results[1] as int;
+      final followingCount = results[2] as int;
+
+      final loadedStories = storySnap.docs
           .map((doc) => StoryModel.fromFirestore(doc.data(), doc.id))
           .toList();
 
       setState(() {
         stories = loadedStories;
+        _followerCount = followerCount;
+        _followingCount = followingCount;
         loading = false;
       });
     } catch (e) {
@@ -153,10 +169,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           20.heightBox,
 
-          // Only stories stat
+          // Stats row: followers | following | stories
           HStack([
+            _statBox(_followerCount.toString(), "FOLLOWERS"),
+            8.widthBox,
+            _statBox(_followingCount.toString(), "FOLLOWING"),
+            8.widthBox,
             _statBox(stories.length.toString(), "STORIES"),
           ]).px16(),
+
+          12.heightBox,
+
+          // Find People button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SearchUsersScreen(),
+                ),
+              ),
+              child: Container(
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(24),
+                  border:
+                      Border.all(color: Colors.white.withOpacity(0.12)),
+                ),
+                child: HStack(
+                  [
+                    const Icon(Icons.person_search,
+                        color: Colors.white70, size: 20),
+                    8.widthBox,
+                    "Find People".text.color(Colors.white70).semiBold.make(),
+                  ],
+                  alignment: MainAxisAlignment.center,
+                ),
+              ),
+            ),
+          ),
 
           20.heightBox,
 
