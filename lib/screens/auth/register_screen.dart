@@ -1,5 +1,6 @@
 import 'dart:developer';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:storyo/core/colors.dart';
 import 'package:storyo/screens/auth/auth_service.dart';
@@ -184,8 +185,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 _password.text.trim(),
                                  );
 
-  if (user != null) {
+                                  if (user != null) {
+    // Save user profile to Firestore so other users can find them
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .set({
+      'uid': user.uid,
+      'name': _name.text.trim(),
+      'fullName': _name.text.trim(),
+      'email': _email.text.trim(),
+      'createdAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
     log("User Created Successfully!");
+    if (!context.mounted) return;
     Navigator.pushReplacementNamed(context, '/LoginScreen');
   } else {
     ScaffoldMessenger.of(context).showSnackBar(

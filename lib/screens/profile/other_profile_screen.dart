@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:storyo/core/colors.dart';
 import 'package:storyo/models/story_model.dart';
 import 'package:storyo/screens/reader/reader_screen.dart';
+import 'package:storyo/services/follow_service.dart';
 import 'package:velocity_x/velocity_x.dart';
 
 class OtherProfileScreen extends StatefulWidget {
@@ -22,41 +24,88 @@ class OtherProfileScreen extends StatefulWidget {
 }
 
 class _OtherProfileScreenState extends State<OtherProfileScreen> {
+  final FollowService _followService = FollowService();
+
   List<StoryModel> stories = [];
   bool loading = true;
+  bool _followLoading = false;
+  bool _isFollowing = false;
+  int _followerCount = 0;
+  int _followingCount = 0;
+
+  final String _currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
 
   @override
   void initState() {
     super.initState();
-    _loadAuthorStories();
+    _loadProfile();
   }
 
-  Future<void> _loadAuthorStories() async {
+  Future<void> _loadProfile() async {
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('stories')
-          .where('authorId', isEqualTo: widget.authorId)
-          .where('status', isEqualTo: 'published')
-          .orderBy('createdAt', descending: true)
-          .get();
+      final results = await Future.wait([
+        _followService.isFollowing(widget.authorId),
+        _followService.getFollowerCount(widget.authorId),
+        _followService.getFollowingCount(widget.authorId),
+        FirebaseFirestore.instance
+            .collection('stories')
+            .where('authorId', isEqualTo: widget.authorId)
+            .where('status', isEqualTo: 'published')
+            .orderBy('createdAt', descending: true)
+            .get(),
+      ]);
 
-      final loadedStories = snapshot.docs
-          .map((doc) => StoryModel.fromFirestore(doc.data(), doc.id))
-          .toList();
+      final isFollowing = results[0] as bool;
+      final followerCount = results[1] as int;
+      final followingCount = results[2] as int;
+      final storySnap = results[3] as QuerySnapshot<Map<String, dynamic>>;
 
       setState(() {
-        stories = loadedStories;
+        _isFollowing = isFollowing;
+        _followerCount = followerCount;
+        _followingCount = followingCount;
+        stories = storySnap.docs
+            .map((doc) => StoryModel.fromFirestore(doc.data(), doc.id))
+            .toList();
         loading = false;
       });
     } catch (e) {
-      setState(() {
-        loading = false;
-      });
-
+      setState(() => loading = false);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to load author profile: $e")),
+        SnackBar(content: Text("Failed to load profile: $e")),
       );
+    }
+  }
+
+  Future<void> _toggleFollow() async {
+    if (_followLoading) return;
+    setState(() => _followLoading = true);
+
+    try {
+      if (_isFollowing) {
+        await _followService.unfollowUser(targetUid: widget.authorId);
+        setState(() {
+          _isFollowing = false;
+          _followerCount = (_followerCount - 1).clamp(0, _followerCount);
+        });
+      } else {
+        await _followService.followUser(
+          targetUid: widget.authorId,
+          targetName: widget.authorName,
+        );
+        setState(() {
+          _isFollowing = true;
+          _followerCount += 1;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Action failed: $e")),
+      );
+    } finally {
+      if (mounted) setState(() => _followLoading = false);
     }
   }
 
@@ -66,6 +115,8 @@ class _OtherProfileScreenState extends State<OtherProfileScreen> {
     final username = email.isNotEmpty && email.contains('@')
         ? email.split('@').first
         : widget.authorName.toLowerCase().replaceAll(" ", "_");
+
+    final isOwnProfile = _currentUid == widget.authorId;
 
     if (loading) {
       return const Scaffold(
@@ -84,8 +135,10 @@ class _OtherProfileScreenState extends State<OtherProfileScreen> {
                 Icon(Icons.arrow_back_ios_new, color: Colors.white)
                     .p8()
                     .onInkTap(() => Navigator.pop(context)),
-                6.widthBox,
+                const Spacer(),
                 "Profile".text.white.bold.xl2.make(),
+                const Spacer(),
+                48.widthBox,
               ],
             ).px8().py4(),
 
@@ -114,7 +167,13 @@ class _OtherProfileScreenState extends State<OtherProfileScreen> {
 
             widget.authorName.text.white.bold.xl3.make().centered(),
             6.heightBox,
-            ("@$username").text.color(AppColors.accent).semiBold.lg.make().centered(),
+            ("@$username")
+                .text
+                .color(AppColors.accent)
+                .semiBold
+                .lg
+                .make()
+                .centered(),
 
             if (email.isNotEmpty) ...[
               8.heightBox,
@@ -123,11 +182,60 @@ class _OtherProfileScreenState extends State<OtherProfileScreen> {
 
             20.heightBox,
 
+            // Stats row
             HStack([
+              _countBox(_followerCount.toString(), "FOLLOWERS"),
+              8.widthBox,
+              _countBox(_followingCount.toString(), "FOLLOWING"),
+              8.widthBox,
               _countBox(stories.length.toString(), "STORIES"),
             ]).px16(),
 
             20.heightBox,
+
+            // Follow / Unfollow button (hidden for own profile)
+            if (!isOwnProfile)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                child: GestureDetector(
+                  onTap: _followLoading ? null : _toggleFollow,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    height: 46,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: _isFollowing
+                          ? Colors.white.withOpacity(0.08)
+                          : AppColors.accent,
+                      borderRadius: BorderRadius.circular(30),
+                      border: _isFollowing
+                          ? Border.all(color: Colors.white.withOpacity(0.2))
+                          : null,
+                    ),
+                    child: Center(
+                      child: _followLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              _isFollowing ? "Unfollow" : "Follow",
+                              style: TextStyle(
+                                color: _isFollowing
+                                    ? Colors.white70
+                                    : Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+              ),
 
             "Stories".text.white.bold.xl2.make().px16(),
             12.heightBox,
