@@ -7,6 +7,7 @@ import 'package:storyo/models/story_model.dart';
 import 'package:storyo/screens/reader/reader_screen.dart';
 import 'package:storyo/screens/search/search_users_screen.dart';
 import 'package:storyo/services/follow_service.dart';
+import 'package:storyo/services/interaction_service.dart';
 import 'package:velocity_x/velocity_x.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -16,21 +17,34 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends State<ProfileScreen>
+    with SingleTickerProviderStateMixin {
   bool loading = true;
   List<StoryModel> stories = [];
+  List<StoryModel> likedStories = [];
+  List<Map<String, dynamic>> userComments = [];
 
   String name = "";
   String email = "";
   int _followerCount = 0;
   int _followingCount = 0;
 
+  late final TabController _tabController;
+
   final FollowService _followService = FollowService();
+  final InteractionService _interactionService = InteractionService();
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
     _loadProfile();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadProfile() async {
@@ -70,11 +84,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             .get(),
         _followService.getFollowerCount(user.uid),
         _followService.getFollowingCount(user.uid),
+        _interactionService.getLikedStories(user.uid),
+        _interactionService.getUserComments(user.uid),
       ]);
 
       final storySnap = results[0] as QuerySnapshot<Map<String, dynamic>>;
       final followerCount = results[1] as int;
       final followingCount = results[2] as int;
+      final liked = results[3] as List<StoryModel>;
+      final comments = results[4] as List<Map<String, dynamic>>;
 
       final loadedStories = storySnap.docs
           .map((doc) => StoryModel.fromFirestore(doc.data(), doc.id))
@@ -84,6 +102,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         stories = loadedStories;
         _followerCount = followerCount;
         _followingCount = followingCount;
+        likedStories = liked;
+        userComments = comments;
         loading = false;
       });
     } catch (e) {
@@ -114,140 +134,296 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       backgroundColor: AppColors.secondary,
       body: SafeArea(
-        child: VStack([
-          // Top row
-          HStack([
-            Icon(
-              Icons.arrow_back_ios_new,
-              color: Colors.white,
-            ).p8().onInkTap(() => Navigator.pop(context)),
-            const Spacer(),
-            "Profile".text.white.bold.xl2.make(),
-            const Spacer(),
-            Icon(Icons.settings, color: Colors.white70).p8().onInkTap(() {
-              Navigator.pushNamed(context, MyRoutes.settingsScreen);
-            }),
-          ]).px8().py4(),
+        child: Column(
+          children: [
+            // Top row
+            HStack([
+              Icon(
+                Icons.arrow_back_ios_new,
+                color: Colors.white,
+              ).p8().onInkTap(() => Navigator.pop(context)),
+              const Spacer(),
+              "Profile".text.white.bold.xl2.make(),
+              const Spacer(),
+              Icon(Icons.settings, color: Colors.white70).p8().onInkTap(() {
+                Navigator.pushNamed(context, MyRoutes.settingsScreen);
+              }),
+            ]).px8().py4(),
 
-          12.heightBox,
+            12.heightBox,
 
-          // Avatar
-          CircleAvatar(
-            radius: 52,
-            backgroundColor: Colors.white.withOpacity(0.08),
-            child: CircleAvatar(
-              radius: 48,
-              backgroundColor: AppColors.accent,
-              child: Text(
-                name.isNotEmpty ? name[0].toUpperCase() : "U",
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 30,
-                  fontWeight: FontWeight.bold,
+            // Avatar
+            CircleAvatar(
+              radius: 52,
+              backgroundColor: Colors.white.withOpacity(0.08),
+              child: CircleAvatar(
+                radius: 48,
+                backgroundColor: AppColors.accent,
+                child: Text(
+                  name.isNotEmpty ? name[0].toUpperCase() : "U",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ).centered(),
+
+            16.heightBox,
+
+            name.text.white.bold.xl3.make().centered(),
+            6.heightBox,
+
+            ("@$username")
+                .text
+                .color(AppColors.accent)
+                .semiBold
+                .lg
+                .make()
+                .centered(),
+
+            if (email.isNotEmpty) ...[
+              8.heightBox,
+              email.text.color(Colors.white60).make().centered(),
+            ],
+
+            20.heightBox,
+
+            // Stats row: followers | following | stories
+            HStack([
+              _statBox(_followerCount.toString(), "FOLLOWERS"),
+              8.widthBox,
+              _statBox(_followingCount.toString(), "FOLLOWING"),
+              8.widthBox,
+              _statBox(stories.length.toString(), "STORIES"),
+            ]).px16(),
+
+            12.heightBox,
+
+            // Find People button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SearchUsersScreen(),
+                  ),
+                ),
+                child: Container(
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(24),
+                    border:
+                        Border.all(color: Colors.white.withOpacity(0.12)),
+                  ),
+                  child: HStack(
+                    [
+                      const Icon(Icons.person_search,
+                          color: Colors.white70, size: 20),
+                      8.widthBox,
+                      "Find People".text.color(Colors.white70).semiBold.make(),
+                    ],
+                    alignment: MainAxisAlignment.center,
+                  ),
                 ),
               ),
             ),
-          ).centered(),
 
-          16.heightBox,
+            16.heightBox,
 
-          name.text.white.bold.xl3.make().centered(),
-          6.heightBox,
-
-          ("@$username")
-              .text
-              .color(AppColors.accent)
-              .semiBold
-              .lg
-              .make()
-              .centered(),
-
-          if (email.isNotEmpty) ...[
-            8.heightBox,
-            email.text.color(Colors.white60).make().centered(),
-          ],
-
-          20.heightBox,
-
-          // Stats row: followers | following | stories
-          HStack([
-            _statBox(_followerCount.toString(), "FOLLOWERS"),
-            8.widthBox,
-            _statBox(_followingCount.toString(), "FOLLOWING"),
-            8.widthBox,
-            _statBox(stories.length.toString(), "STORIES"),
-          ]).px16(),
-
-          12.heightBox,
-
-          // Find People button
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: GestureDetector(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const SearchUsersScreen(),
+            // Activity tabs
+            TabBar(
+              controller: _tabController,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white38,
+              indicatorColor: AppColors.accent,
+              dividerColor: Colors.white12,
+              tabs: [
+                Tab(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.menu_book_outlined, size: 16),
+                      const SizedBox(width: 4),
+                      const Text("Stories"),
+                    ],
+                  ),
                 ),
-              ),
-              child: Container(
-                height: 42,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(24),
-                  border:
-                      Border.all(color: Colors.white.withOpacity(0.12)),
+                Tab(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.favorite_outline, size: 16),
+                      const SizedBox(width: 4),
+                      const Text("Liked"),
+                    ],
+                  ),
                 ),
-                child: HStack(
-                  [
-                    const Icon(Icons.person_search,
-                        color: Colors.white70, size: 20),
-                    8.widthBox,
-                    "Find People".text.color(Colors.white70).semiBold.make(),
-                  ],
-                  alignment: MainAxisAlignment.center,
+                Tab(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.chat_bubble_outline, size: 16),
+                      const SizedBox(width: 4),
+                      const Text("Comments"),
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ),
 
-          20.heightBox,
-
-          "My Stories".text.white.bold.xl2.make().px16(),
-          12.heightBox,
-
-          Expanded(
-            child: stories.isEmpty
-                ? Center(
-                    child: "No published stories yet"
-                        .text
-                        .color(Colors.white60)
-                        .lg
-                        .make(),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
-                    itemCount: stories.length,
-                    itemBuilder: (context, index) {
-                      final story = stories[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _StoryCard(
-                          story: story,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ReaderScreen(story: story),
+            // Tab content
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  // ── Tab 1: My Stories ──────────────────────────────────
+                  stories.isEmpty
+                      ? Center(
+                          child: "No published stories yet"
+                              .text
+                              .color(Colors.white60)
+                              .lg
+                              .make(),
+                        )
+                      : ListView.builder(
+                          padding:
+                              const EdgeInsets.fromLTRB(16, 12, 16, 120),
+                          itemCount: stories.length,
+                          itemBuilder: (context, index) {
+                            final story = stories[index];
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _StoryCard(
+                                story: story,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          ReaderScreen(story: story),
+                                    ),
+                                  );
+                                },
                               ),
                             );
                           },
                         ),
-                      );
-                    },
-                  ),
-          ),
-        ]),
+
+                  // ── Tab 2: Liked Stories ───────────────────────────────
+                  likedStories.isEmpty
+                      ? Center(
+                          child: "No liked stories yet"
+                              .text
+                              .color(Colors.white60)
+                              .lg
+                              .make(),
+                        )
+                      : ListView.builder(
+                          padding:
+                              const EdgeInsets.fromLTRB(16, 12, 16, 120),
+                          itemCount: likedStories.length,
+                          itemBuilder: (context, index) {
+                            final story = likedStories[index];
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _StoryCard(
+                                story: story,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          ReaderScreen(story: story),
+                                    ),
+                                  );
+                                },
+                                trailing: const Icon(
+                                  Icons.favorite,
+                                  color: Colors.redAccent,
+                                  size: 16,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+
+                  // ── Tab 3: My Comments ─────────────────────────────────
+                  userComments.isEmpty
+                      ? Center(
+                          child: "No comments yet"
+                              .text
+                              .color(Colors.white60)
+                              .lg
+                              .make(),
+                        )
+                      : ListView.builder(
+                          padding:
+                              const EdgeInsets.fromLTRB(16, 12, 16, 120),
+                          itemCount: userComments.length,
+                          itemBuilder: (context, index) {
+                            final c = userComments[index];
+                            final storyTitle =
+                                (c['storyTitle'] as String?) ?? 'Unknown Story';
+                            final text = (c['text'] as String?) ?? '';
+                            return Container(
+                              margin:
+                                  const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.08),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.menu_book_outlined,
+                                        color: AppColors.accent,
+                                        size: 14,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          storyTitle,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: AppColors.accent,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    text,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
 
       bottomSheet: Container(
@@ -297,10 +473,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 class _StoryCard extends StatelessWidget {
   final StoryModel story;
   final VoidCallback onTap;
+  final Widget? trailing;
 
   const _StoryCard({
     required this.story,
     required this.onTap,
+    this.trailing,
   });
 
   @override
@@ -340,15 +518,22 @@ class _StoryCard extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               child: VStack(
                 [
-                  Text(
-                    story.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          story.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      if (trailing != null) trailing!,
+                    ],
                   ),
                   6.heightBox,
                   Text(
