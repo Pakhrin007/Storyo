@@ -28,7 +28,10 @@ class NotificationService {
       }
 
       // Listen for token refresh.
-      messaging.onTokenRefresh.listen(_saveToken);
+      messaging.onTokenRefresh.listen(
+        _saveToken,
+        onError: (error) => log('NotificationService token refresh error: $error'),
+      );
     } catch (e) {
       log('NotificationService.initFCMToken error: $e');
     }

@@ -16,8 +16,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   void initState() {
     super.initState();
-    // Mark all as read when the screen is opened.
-    _service.markAllAsRead();
+    // Mark all as read after the first frame so the user sees the list first.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _service.markAllAsRead();
+    });
   }
 
   @override
