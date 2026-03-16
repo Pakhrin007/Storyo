@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:storyo/services/notification_service.dart';
 
 class TopBar extends StatelessWidget {
   final VoidCallback onAvatarTap;
@@ -26,9 +27,42 @@ class TopBar extends StatelessWidget {
             child: Text("Storyo",
                 style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
           ),
-          IconButton(
-            onPressed: onBellTap,
-            icon: const Icon(Icons.notifications_none_rounded, color: Colors.white70),
+          StreamBuilder<int>(
+            stream: NotificationService().unreadCountStream(),
+            builder: (context, snapshot) {
+              final count = snapshot.data ?? 0;
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  IconButton(
+                    onPressed: onBellTap,
+                    icon: const Icon(Icons.notifications_none_rounded, color: Colors.white70),
+                  ),
+                  if (count > 0)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.redAccent,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                        child: Text(
+                          count > 99 ? '99+' : '$count',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ],
       ),
