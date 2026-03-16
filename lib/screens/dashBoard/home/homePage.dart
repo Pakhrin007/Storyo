@@ -1,15 +1,12 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:storyo/core/routes.dart';
-import 'package:storyo/data/home_itemds.dart';
+import 'package:storyo/models/story_model.dart';
 import 'package:storyo/screens/reader/reader_screen.dart';
-import 'package:storyo/models/story_model.dart'; // for StoryItem model (reuse)
 import 'package:storyo/widgets/bottom_nav.dart';
-import 'package:storyo/widgets/featured_card.dart';
-import 'package:storyo/widgets/just_added_title.dart';
 import 'package:storyo/widgets/search_bar.dart';
-import 'package:storyo/widgets/section_header.dart';
 import 'package:storyo/widgets/top_bar.dart';
-import 'package:storyo/widgets/trending_card.dart';
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -21,23 +18,75 @@ class Homepage extends StatefulWidget {
 class _HomepageState extends State<Homepage> {
   int _tabIndex = 0;
 
-  final List<String> _genres = const ["All", "Sci-Fi", "Mystery", "Romance"];
-  int _selectedGenre = 0;
+  bool loading = true;
 
-  void _openPdf(HomePdfItem item) {
-    final story = StoryModel(
-      id: item.title,
-      title: item.title,
-      genre: "Home",
-      author: item.author,
-      coverUrl: item.coverAsset,
-      pdfUrl: item.pdfAsset,
-      isAsset: true,
-    );
+  List<String> preferredGenres = [];
+  List<StoryModel> allStories = [];
 
+  Map<String, List<StoryModel>> genreStories = {};
+
+  @override
+  void initState() {
+    super.initState();
+    loadHome();
+  }
+
+  Future<void> loadHome() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user != null) {
+        final userDoc = await FirebaseFirestore.instance
+            .collection("users")
+            .doc(user.uid)
+            .get();
+
+        final data = userDoc.data();
+        final prefs = data?["readingPreferences"];
+
+        if (prefs is List) {
+          preferredGenres = prefs.map((e) => e.toString()).toList();
+        }
+      }
+
+      final storySnap = await FirebaseFirestore.instance
+          .collection("stories")
+          .where("status", isEqualTo: "published")
+          .get();
+
+      final stories = storySnap.docs
+          .map((doc) => StoryModel.fromFirestore(doc.data(), doc.id))
+          .toList();
+
+      allStories = stories;
+
+      Map<String, List<StoryModel>> map = {};
+
+      for (var genre in preferredGenres) {
+        map[genre] = stories
+            .where((s) =>
+                s.genre.trim().toLowerCase() ==
+                genre.trim().toLowerCase())
+            .toList();
+      }
+
+      setState(() {
+        genreStories = map;
+        loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        loading = false;
+      });
+    }
+  }
+
+  void openStory(StoryModel story) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => ReaderScreen(story: story)),
+      MaterialPageRoute(
+        builder: (_) => ReaderScreen(story: story),
+      ),
     );
   }
 
@@ -52,98 +101,91 @@ class _HomepageState extends State<Homepage> {
               onAvatarTap: () => setState(() => _tabIndex = 3),
               onBellTap: () {},
             ),
+
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-                children: [
-                  SearchBarWidget(onChanged: (v) {}, onTap: () {}),
-                  const SizedBox(height: 14),
+              child: loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                      children: [
+                        SearchBarWidget(onChanged: (v) {}, onTap: () {}),
+                        const SizedBox(height: 20),
 
-                  FeaturedCard(
-                    item: featuredItem,
-                    onReadNow: () => _openPdf(featuredItem),
-                    onBookmark: () {},
-                  ),
-                  const SizedBox(height: 18),
-
-                  SectionHeader(
-                    title: "Explore Genres",
-                    actionText: "See all",
-                    onAction: () {},
-                  ),
-                  const SizedBox(height: 10),
-
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: List.generate(_genres.length, (i) {
-                        final selected = i == _selectedGenre;
-                        return Padding(
-                          padding: EdgeInsets.only(
-                            right: i == _genres.length - 1 ? 0 : 10,
+                        const Text(
+                          "Recommended for You",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
                           ),
-                          child: ChoiceChip(
-                            label: Text(_genres[i]),
-                            selected: selected,
-                            onSelected: (_) =>
-                                setState(() => _selectedGenre = i),
-                            labelStyle: TextStyle(
-                              color: selected ? Colors.black : Colors.white70,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            selectedColor: const Color(0xFF1E88FF),
-                            backgroundColor: const Color(0xFF1A1A1A),
-                            side: BorderSide(
-                              color: Colors.white.withOpacity(0.06),
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
-                            ),
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        SizedBox(
+                          height: 220,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: allStories.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: 12),
+                            itemBuilder: (context, i) {
+                              final story = allStories[i];
+                              return StoryCard(
+                                story: story,
+                                onTap: () => openStory(story),
+                              );
+                            },
                           ),
-                        );
-                      }),
+                        ),
+
+                        const SizedBox(height: 28),
+
+                        ...preferredGenres.map((genre) {
+                          final stories = genreStories[genre] ?? [];
+
+                          if (stories.isEmpty) return const SizedBox();
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "$genre Picks",
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+
+                              const SizedBox(height: 12),
+
+                              SizedBox(
+                                height: 220,
+                                child: ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: stories.length,
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(width: 12),
+                                  itemBuilder: (context, i) {
+                                    final story = stories[i];
+
+                                    return StoryCard(
+                                      story: story,
+                                      onTap: () => openStory(story),
+                                    );
+                                  },
+                                ),
+                              ),
+
+                              const SizedBox(height: 28),
+                            ],
+                          );
+                        }).toList(),
+
+                        const SizedBox(height: 90),
+                      ],
                     ),
-                  ),
-
-                  const SizedBox(height: 18),
-                  const TextOnlyHeader("Trending Now"),
-                  const SizedBox(height: 10),
-
-                  SizedBox(
-                    height: 220,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: trendingItems.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 12),
-                      itemBuilder: (context, i) {
-                        final item = trendingItems[i];
-                        return TrendingCard(
-                          rank: "${i + 1}",
-                          item: item,
-                          onTap: () => _openPdf(item),
-                        );
-                      },
-                    ),
-                  ),
-
-                  const SizedBox(height: 18),
-                  const TextOnlyHeader("Just Added"),
-                  const SizedBox(height: 10),
-
-                  ...justAddedItems.map(
-                    (item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: JustAddedTile(
-                        item: item,
-                        tag: "Story",
-                        onTap: () => _openPdf(item),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 90),
-                ],
-              ),
             ),
           ],
         ),
@@ -169,6 +211,71 @@ class _HomepageState extends State<Homepage> {
 
           setState(() => _tabIndex = i);
         },
+      ),
+    );
+  }
+}
+
+class StoryCard extends StatelessWidget {
+  final StoryModel story;
+  final VoidCallback onTap;
+
+  const StoryCard({
+    super.key,
+    required this.story,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 150,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.network(
+                story.coverUrl,
+                height: 160,
+                width: 150,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  height: 160,
+                  width: 150,
+                  color: Colors.white10,
+                  child: const Icon(
+                    Icons.broken_image,
+                    color: Colors.white54,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            Text(
+              story.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 4),
+
+            Text(
+              story.author,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white60),
+            ),
+          ],
+        ),
       ),
     );
   }

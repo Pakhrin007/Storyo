@@ -7,11 +7,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:storyo/core/colors.dart';
+import 'package:storyo/models/story_model.dart';
 import 'package:storyo/services/cloudinary_service.dart';
 import 'package:velocity_x/velocity_x.dart';
 
 class CreateStoryScreen extends StatefulWidget {
-  const CreateStoryScreen({super.key});
+  final StoryModel? story;
+
+  const CreateStoryScreen({super.key, this.story});
 
   @override
   State<CreateStoryScreen> createState() => _CreateStoryScreenState();
@@ -37,6 +40,22 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
     _titleController.dispose();
     _tagsController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (widget.story != null) {
+      _titleController.text = widget.story!.title;
+      _tagsController.text = widget.story!.tags.join(', ');
+
+      final genreIndex = genres.indexOf(widget.story!.genre);
+      selectedGenre = genreIndex >= 0 ? genreIndex : 0;
+
+      _coverFileName = widget.story!.coverFileName;
+      _pdfFileName = widget.story!.pdfFileName;
+    }
   }
 
   Future<void> _pickCoverImage() async {
@@ -117,14 +136,20 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       return;
     }
 
-    if (_coverBytes == null || _coverFileName == null) {
+    final hasExistingCover =
+        widget.story != null && widget.story!.coverUrl.isNotEmpty;
+
+    final hasExistingPdf =
+        widget.story != null && widget.story!.pdfUrl.isNotEmpty;
+
+    if (_coverBytes == null && !hasExistingCover) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please select a cover image")),
       );
       return;
     }
 
-    if (_pdfBytes == null || _pdfFileName == null) {
+    if (_pdfBytes == null && !hasExistingPdf) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Please select a PDF file")));
@@ -136,22 +161,36 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
     });
 
     try {
-      final coverUrl = await CloudinaryService.uploadImage(
-        bytes: _coverBytes!,
-        fileName: _coverFileName!,
-      );
+      final isEditing = widget.story != null;
 
-      final pdfUrl = await CloudinaryService.uploadPdf(
-        bytes: _pdfBytes!,
-        fileName: _pdfFileName!,
-      );
+      final docRef = isEditing
+          ? FirebaseFirestore.instance
+                .collection('stories')
+                .doc(widget.story!.id)
+          : FirebaseFirestore.instance.collection('stories').doc();
 
-      final docRef = FirebaseFirestore.instance.collection('stories').doc();
-      final storyId = docRef.id;
+      final storyId = isEditing ? widget.story!.id : docRef.id;
 
       final authorName = user.displayName?.trim().isNotEmpty == true
           ? user.displayName!.trim()
           : (user.email?.split('@').first ?? 'User');
+
+      String? coverUrl = isEditing ? widget.story!.coverUrl : null;
+      String? pdfUrl = isEditing ? widget.story!.pdfUrl : null;
+
+      if (_coverBytes != null && _coverFileName != null) {
+        coverUrl = await CloudinaryService.uploadImage(
+          bytes: _coverBytes!,
+          fileName: _coverFileName!,
+        );
+      }
+
+      if (_pdfBytes != null && _pdfFileName != null) {
+        pdfUrl = await CloudinaryService.uploadPdf(
+          bytes: _pdfBytes!,
+          fileName: _pdfFileName!,
+        );
+      }
 
       await docRef.set({
         'id': storyId,
@@ -167,17 +206,25 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
         'authorName': authorName,
         'status': 'published',
         'format': 'pdf',
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': isEditing
+            ? widget.story!.createdAt
+            : FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
-      });
+      }, SetOptions(merge: true));
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Story published successfully")),
+        SnackBar(
+          content: Text(
+            isEditing
+                ? "Story updated successfully"
+                : "Story published successfully",
+          ),
+        ),
       );
 
-      Navigator.pop(context, storyId);
+      Navigator.pop(context, true);
     } catch (e) {
       log("Publish story error: $e");
       if (!mounted) return;
@@ -263,19 +310,22 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
               Icons.arrow_back_ios_new,
               color: Colors.white,
             ).p8().onInkTap(() => Navigator.pop(context)),
-            "New\nStory".text.white.bold.xl2.make().px8(),
-            const Spacer(),
-            VStack([
-              "CLOUD".text.color(Colors.white54).sm.make(),
-              "READY".text.color(Colors.white54).sm.make(),
-            ], crossAlignment: CrossAxisAlignment.center),
-            const Spacer(),
-            "Save\nDraft".text
-                .color(Colors.deepPurpleAccent)
-                .semiBold
+            (widget.story != null ? "Edit\nStory" : "NewStory")
+                .text
+                .white
+                .bold
+                .xl2
                 .make()
-                .p8()
-                .onInkTap(_saveDraft),
+                .centered(),
+            const Spacer(),
+            
+            // const Spacer(),
+            // "Save\nDraft".text
+                // .color(Colors.deepPurpleAccent)
+                // .semiBold
+                // .make()
+                // .p8()
+                // .onInkTap(_saveDraft),
           ]).px8(),
           16.heightBox,
           Expanded(
@@ -419,7 +469,13 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                   child: HStack([
                     const Icon(Icons.rocket_launch, color: Colors.white),
                     10.widthBox,
-                    (_isUploading ? "Publishing..." : "Publish Story")
+                    (_isUploading
+                            ? (widget.story != null
+                                  ? "Updating..."
+                                  : "Publishing...")
+                            : (widget.story != null
+                                  ? "Update Story"
+                                  : "Publish Story"))
                         .text
                         .white
                         .semiBold

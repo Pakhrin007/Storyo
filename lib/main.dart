@@ -37,8 +37,7 @@ class MyApp extends StatelessWidget {
         MyRoutes.registerScreen: (context) => RegisterScreen(),
         MyRoutes.homePage: (context) => Homepage(),
         MyRoutes.onBoardingScreen: (context) => Onboardingscreen(),
-        MyRoutes.onBoardingScreenSuccess: (context) =>
-            Onboardingscreensuccess(),
+        MyRoutes.onBoardingScreenSuccess: (context) =>Onboardingscreensuccess(),
         MyRoutes.settingsScreen: (context) => SettingsScreen(),
         MyRoutes.explorePage: (context) => ExploreScreen(),
         MyRoutes.libraryPage: (context) => const LibraryScreen(),

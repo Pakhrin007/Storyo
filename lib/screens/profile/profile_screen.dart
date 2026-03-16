@@ -6,6 +6,7 @@ import 'package:storyo/core/routes.dart';
 import 'package:storyo/models/story_model.dart';
 import 'package:storyo/screens/reader/reader_screen.dart';
 import 'package:storyo/screens/search/search_users_screen.dart';
+import 'package:storyo/screens/story/create_story_screen.dart';
 import 'package:storyo/services/follow_service.dart';
 import 'package:storyo/services/interaction_service.dart';
 import 'package:velocity_x/velocity_x.dart';
@@ -45,6 +46,62 @@ class _ProfileScreenState extends State<ProfileScreen>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _deleteStory(StoryModel story) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('stories')
+          .doc(story.id)
+          .delete();
+
+      setState(() {
+        stories.removeWhere((s) => s.id == story.id);
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Story deleted successfully")),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to delete story: $e")));
+    }
+  }
+
+  void _showDeleteDialog(StoryModel story) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text(
+          "Delete Story",
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          'Are you sure you want to delete "${story.title}"?',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteStory(story);
+            },
+            child: const Text(
+              "Delete",
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadProfile() async {
@@ -112,9 +169,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       });
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to load profile: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to load profile: $e")));
     }
   }
 
@@ -175,8 +232,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             name.text.white.bold.xl3.make().centered(),
             6.heightBox,
 
-            ("@$username")
-                .text
+            ("@$username").text
                 .color(AppColors.accent)
                 .semiBold
                 .lg
@@ -207,27 +263,24 @@ class _ProfileScreenState extends State<ProfileScreen>
               child: GestureDetector(
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const SearchUsersScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const SearchUsersScreen()),
                 ),
                 child: Container(
                   height: 42,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(24),
-                    border:
-                        Border.all(color: Colors.white.withOpacity(0.12)),
+                    border: Border.all(color: Colors.white.withOpacity(0.12)),
                   ),
-                  child: HStack(
-                    [
-                      const Icon(Icons.person_search,
-                          color: Colors.white70, size: 20),
-                      8.widthBox,
-                      "Find People".text.color(Colors.white70).semiBold.make(),
-                    ],
-                    alignment: MainAxisAlignment.center,
-                  ),
+                  child: HStack([
+                    const Icon(
+                      Icons.person_search,
+                      color: Colors.white70,
+                      size: 20,
+                    ),
+                    8.widthBox,
+                    "Find People".text.color(Colors.white70).semiBold.make(),
+                  ], alignment: MainAxisAlignment.center),
                 ),
               ),
             ),
@@ -283,15 +336,13 @@ class _ProfileScreenState extends State<ProfileScreen>
                   // ── Tab 1: My Stories ──────────────────────────────────
                   stories.isEmpty
                       ? Center(
-                          child: "No published stories yet"
-                              .text
+                          child: "No published stories yet".text
                               .color(Colors.white60)
                               .lg
                               .make(),
                         )
                       : ListView.builder(
-                          padding:
-                              const EdgeInsets.fromLTRB(16, 12, 16, 120),
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
                           itemCount: stories.length,
                           itemBuilder: (context, index) {
                             final story = stories[index];
@@ -308,6 +359,45 @@ class _ProfileScreenState extends State<ProfileScreen>
                                     ),
                                   );
                                 },
+                                trailing: PopupMenuButton<String>(
+                                  icon: const Icon(
+                                    Icons.more_vert,
+                                    color: Colors.white70,
+                                  ),
+                                  // color: Colors.white,
+                                  onSelected: (value) async {
+                                    if (value == 'edit') {
+                                      final result = await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              CreateStoryScreen(story: story),
+                                        ),
+                                      );
+
+                                      if (result == true) {
+                                        _loadProfile();
+                                      }
+                                    } else if (value == 'delete') {
+                                      _showDeleteDialog(story);
+                                    }
+                                  },
+                                  itemBuilder: (context) => const [
+                                    PopupMenuItem(
+                                      value: 'edit',
+                                      child: Text('Edit',style: TextStyle(color: Colors.black),),
+                                    ),
+                                    PopupMenuItem(
+                                      value: 'delete',
+                                      child: Text(
+                                        'Delete',
+                                        style: TextStyle(
+                                          color: Colors.red,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             );
                           },
@@ -316,15 +406,13 @@ class _ProfileScreenState extends State<ProfileScreen>
                   // ── Tab 2: Liked Stories ───────────────────────────────
                   likedStories.isEmpty
                       ? Center(
-                          child: "No liked stories yet"
-                              .text
+                          child: "No liked stories yet".text
                               .color(Colors.white60)
                               .lg
                               .make(),
                         )
                       : ListView.builder(
-                          padding:
-                              const EdgeInsets.fromLTRB(16, 12, 16, 120),
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
                           itemCount: likedStories.length,
                           itemBuilder: (context, index) {
                             final story = likedStories[index];
@@ -354,15 +442,13 @@ class _ProfileScreenState extends State<ProfileScreen>
                   // ── Tab 3: My Comments ─────────────────────────────────
                   userComments.isEmpty
                       ? Center(
-                          child: "No comments yet"
-                              .text
+                          child: "No comments yet".text
                               .color(Colors.white60)
                               .lg
                               .make(),
                         )
                       : ListView.builder(
-                          padding:
-                              const EdgeInsets.fromLTRB(16, 12, 16, 120),
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
                           itemCount: userComments.length,
                           itemBuilder: (context, index) {
                             final c = userComments[index];
@@ -370,8 +456,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                                 (c['storyTitle'] as String?) ?? 'Unknown Story';
                             final text = (c['text'] as String?) ?? '';
                             return Container(
-                              margin:
-                                  const EdgeInsets.only(bottom: 10),
+                              margin: const EdgeInsets.only(bottom: 10),
                               padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.05),
@@ -381,8 +466,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                                 ),
                               ),
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
                                     children: [
@@ -429,24 +513,22 @@ class _ProfileScreenState extends State<ProfileScreen>
       bottomSheet: Container(
         color: AppColors.secondary,
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-        child: Container(
-          height: 56,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.deepPurpleAccent,
-            borderRadius: BorderRadius.circular(30),
-          ),
-          child: HStack(
-            [
-              const Icon(Icons.add, color: Colors.white),
-              10.widthBox,
-              "Create Story".text.white.bold.xl.make(),
-            ],
-            alignment: MainAxisAlignment.center,
-          ),
-        ).onInkTap(() {
-          Navigator.pushNamed(context, MyRoutes.createStoryPage);
-        }),
+        child:
+            Container(
+              height: 56,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.deepPurpleAccent,
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: HStack([
+                const Icon(Icons.add, color: Colors.white),
+                10.widthBox,
+                "Create Story".text.white.bold.xl.make(),
+              ], alignment: MainAxisAlignment.center),
+            ).onInkTap(() {
+              Navigator.pushNamed(context, MyRoutes.createStoryPage);
+            }),
       ),
     );
   }
@@ -475,11 +557,7 @@ class _StoryCard extends StatelessWidget {
   final VoidCallback onTap;
   final Widget? trailing;
 
-  const _StoryCard({
-    required this.story,
-    required this.onTap,
-    this.trailing,
-  });
+  const _StoryCard({required this.story, required this.onTap, this.trailing});
 
   @override
   Widget build(BuildContext context) {
@@ -493,8 +571,9 @@ class _StoryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
-            borderRadius:
-                const BorderRadius.horizontal(left: Radius.circular(18)),
+            borderRadius: const BorderRadius.horizontal(
+              left: Radius.circular(18),
+            ),
             child: Image.network(
               story.coverUrl,
               width: 90,
@@ -504,11 +583,8 @@ class _StoryCard extends StatelessWidget {
                 return Container(
                   width: 90,
                   height: 120,
-                  color: Colors.white10,
-                  child: const Icon(
-                    Icons.broken_image,
-                    color: Colors.white54,
-                  ),
+                  color: Colors.white,
+                  child: const Icon(Icons.broken_image, color: Colors.white54),
                 );
               },
             ),
@@ -516,40 +592,37 @@ class _StoryCard extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(12),
-              child: VStack(
-                [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          story.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+              child: VStack([
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        story.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      if (trailing != null) trailing!,
-                    ],
-                  ),
-                  6.heightBox,
-                  Text(
-                    story.author,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white60),
-                  ),
-                  6.heightBox,
-                  Text(
-                    "Genre: ${story.genre}",
-                    style: const TextStyle(color: Colors.white54),
-                  ),
-                ],
-                crossAlignment: CrossAxisAlignment.start,
-              ),
+                    ),
+                    if (trailing != null) trailing!,
+                  ],
+                ),
+                6.heightBox,
+                Text(
+                  story.author,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                6.heightBox,
+                Text(
+                  "Genre: ${story.genre}",
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ], crossAlignment: CrossAxisAlignment.start),
             ),
           ),
         ],

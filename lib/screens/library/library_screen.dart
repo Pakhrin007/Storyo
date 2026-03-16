@@ -27,11 +27,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       "author": "Sally Rooney",
       "time": "Last read 3 days ago",
     },
-    {
-      "title": "Deep Work",
-      "author": "Cal Newport",
-      "time": "Last read Dec 12",
-    },
+    {"title": "Deep Work", "author": "Cal Newport", "time": "Last read Dec 12"},
   ];
 
   final List<Map<String, String>> favoriteStories = const [
@@ -66,10 +62,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         centerTitle: true,
         title: const Text(
           'Library',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
       ),
       body: SafeArea(
@@ -175,20 +168,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
             ),
           ],
         ),
-      ),
-      bottomNavigationBar: _LibraryBottomNav(
-        currentIndex: 2,
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.pushReplacementNamed(context, MyRoutes.homePage);
-          } else if (index == 1) {
-            Navigator.pushReplacementNamed(context, MyRoutes.explorePage);
-          } else if (index == 2) {
-            // already here
-          } else if (index == 3) {
-            Navigator.pushNamed(context, MyRoutes.settingsScreen);
-          }
-        },
       ),
     );
   }
@@ -300,10 +279,7 @@ class _LibraryBookTile extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 author,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 15,
-                ),
+                style: const TextStyle(color: Colors.white70, fontSize: 15),
               ),
               const SizedBox(height: 10),
               Row(
@@ -327,52 +303,42 @@ class _LibraryBookTile extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        const Icon(
-          Icons.chevron_right,
-          color: Colors.white54,
-          size: 22,
-        ),
+        const Icon(Icons.chevron_right, color: Colors.white54, size: 22),
       ],
     );
   }
 }
 
-class _LibraryBottomNav extends StatelessWidget {
-  final int currentIndex;
-  final ValueChanged<int> onTap;
+// class _LibraryBottomNav extends StatelessWidget {
+//   final int currentIndex;
+//   final ValueChanged<int> onTap;
 
-  const _LibraryBottomNav({
-    required this.currentIndex,
-    required this.onTap,
-  });
+//   const _LibraryBottomNav({required this.currentIndex, required this.onTap});
 
-  @override
-  Widget build(BuildContext context) {
-    return BottomNavigationBar(
-      currentIndex: currentIndex,
-      onTap: onTap,
-      type: BottomNavigationBarType.fixed,
-      backgroundColor: const Color(0xFF0B0B0B),
-      selectedItemColor: const Color(0xFF1E88FF),
-      unselectedItemColor: Colors.white38,
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home_rounded),
-          label: "Home",
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.explore_rounded),
-          label: "Explore",
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.menu_book_rounded),
-          label: "Library",
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.settings_rounded),
-          label: "Settings",
-        ),
-      ],
-    );
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return BottomNavigationBar(
+//       currentIndex: currentIndex,
+//       onTap: onTap,
+//       type: BottomNavigationBarType.fixed,
+//       backgroundColor: const Color(0xFF0B0B0B),
+//       selectedItemColor: const Color(0xFF1E88FF),
+//       unselectedItemColor: Colors.white38,
+//       items: const [
+//         BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: "Home"),
+//         BottomNavigationBarItem(
+//           icon: Icon(Icons.explore_rounded),
+//           label: "Explore",
+//         ),
+//         BottomNavigationBarItem(
+//           icon: Icon(Icons.menu_book_rounded),
+//           label: "Library",
+//         ),
+//         BottomNavigationBarItem(
+//           icon: Icon(Icons.settings_rounded),
+//           label: "Settings",
+//         ),
+//       ],
+//     );
+//   }
+// }

@@ -24,6 +24,62 @@ class OtherProfileScreen extends StatefulWidget {
 }
 
 class _OtherProfileScreenState extends State<OtherProfileScreen> {
+  Future<void> _deleteStory(StoryModel story) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('stories')
+          .doc(story.id)
+          .delete();
+
+      setState(() {
+        stories.removeWhere((s) => s.id == story.id);
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Story deleted successfully")),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to delete story: $e")));
+    }
+  }
+
+  void _showDeleteDialog(StoryModel story) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text(
+          "Delete Story",
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          'Are you sure you want to delete "${story.title}"?',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteStory(story);
+            },
+            child: const Text(
+              "Delete",
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   final FollowService _followService = FollowService();
 
   List<StoryModel> stories = [];
@@ -72,9 +128,9 @@ class _OtherProfileScreenState extends State<OtherProfileScreen> {
     } catch (e) {
       setState(() => loading = false);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to load profile: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to load profile: $e")));
     }
   }
 
@@ -101,9 +157,9 @@ class _OtherProfileScreenState extends State<OtherProfileScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Action failed: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Action failed: $e")));
     } finally {
       if (mounted) setState(() => _followLoading = false);
     }
@@ -128,151 +184,167 @@ class _OtherProfileScreenState extends State<OtherProfileScreen> {
     return Scaffold(
       backgroundColor: AppColors.secondary,
       body: SafeArea(
-        child: VStack(
-          [
-            HStack(
-              [
-                Icon(Icons.arrow_back_ios_new, color: Colors.white)
-                    .p8()
-                    .onInkTap(() => Navigator.pop(context)),
-                const Spacer(),
-                "Profile".text.white.bold.xl2.make(),
-                const Spacer(),
-                48.widthBox,
-              ],
-            ).px8().py4(),
+        child: VStack([
+          HStack([
+            Icon(
+              Icons.arrow_back_ios_new,
+              color: Colors.white,
+            ).p8().onInkTap(() => Navigator.pop(context)),
+            const Spacer(),
+            "Profile".text.white.bold.xl2.make(),
+            const Spacer(),
+            48.widthBox,
+          ]).px8().py4(),
 
-            16.heightBox,
+          16.heightBox,
 
-            CircleAvatar(
-              radius: 50,
-              backgroundColor: Colors.white.withOpacity(0.08),
-              child: CircleAvatar(
-                radius: 46,
-                backgroundColor: AppColors.accent,
-                child: Text(
-                  widget.authorName.isNotEmpty
-                      ? widget.authorName[0].toUpperCase()
-                      : "A",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                  ),
+          CircleAvatar(
+            radius: 50,
+            backgroundColor: Colors.white.withOpacity(0.08),
+            child: CircleAvatar(
+              radius: 46,
+              backgroundColor: AppColors.accent,
+              child: Text(
+                widget.authorName.isNotEmpty
+                    ? widget.authorName[0].toUpperCase()
+                    : "A",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 30,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ).centered(),
-
-            14.heightBox,
-
-            widget.authorName.text.white.bold.xl3.make().centered(),
-            6.heightBox,
-            ("@$username")
-                .text
-                .color(AppColors.accent)
-                .semiBold
-                .lg
-                .make()
-                .centered(),
-
-            if (email.isNotEmpty) ...[
-              8.heightBox,
-              email.text.color(Colors.white60).make().centered(),
-            ],
-
-            20.heightBox,
-
-            // Stats row
-            HStack([
-              _countBox(_followerCount.toString(), "FOLLOWERS"),
-              8.widthBox,
-              _countBox(_followingCount.toString(), "FOLLOWING"),
-              8.widthBox,
-              _countBox(stories.length.toString(), "STORIES"),
-            ]).px16(),
-
-            20.heightBox,
-
-            // Follow / Unfollow button (hidden for own profile)
-            if (!isOwnProfile)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                child: GestureDetector(
-                  onTap: _followLoading ? null : _toggleFollow,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    height: 46,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: _isFollowing
-                          ? Colors.white.withOpacity(0.08)
-                          : AppColors.accent,
-                      borderRadius: BorderRadius.circular(30),
-                      border: _isFollowing
-                          ? Border.all(color: Colors.white.withOpacity(0.2))
-                          : null,
-                    ),
-                    child: Center(
-                      child: _followLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(
-                              _isFollowing ? "Unfollow" : "Follow",
-                              style: TextStyle(
-                                color: _isFollowing
-                                    ? Colors.white70
-                                    : Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                    ),
-                  ),
-                ),
-              ),
-
-            "Stories".text.white.bold.xl2.make().px16(),
-            12.heightBox,
-
-            Expanded(
-              child: stories.isEmpty
-                  ? Center(
-                      child: "No published stories yet"
-                          .text
-                          .color(Colors.white60)
-                          .lg
-                          .make(),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      itemCount: stories.length,
-                      itemBuilder: (context, index) {
-                        final story = stories[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _StoryCard(
-                            story: story,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ReaderScreen(story: story),
-                                ),
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    ),
             ),
+          ).centered(),
+
+          14.heightBox,
+
+          widget.authorName.text.white.bold.xl3.make().centered(),
+          6.heightBox,
+          ("@$username").text
+              .color(AppColors.accent)
+              .semiBold
+              .lg
+              .make()
+              .centered(),
+
+          if (email.isNotEmpty) ...[
+            8.heightBox,
+            email.text.color(Colors.white60).make().centered(),
           ],
-        ),
+
+          20.heightBox,
+
+          // Stats row
+          HStack([
+            _countBox(_followerCount.toString(), "FOLLOWERS"),
+            8.widthBox,
+            _countBox(_followingCount.toString(), "FOLLOWING"),
+            8.widthBox,
+            _countBox(stories.length.toString(), "STORIES"),
+          ]).px16(),
+
+          20.heightBox,
+
+          // Follow / Unfollow button (hidden for own profile)
+          if (!isOwnProfile)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+              child: GestureDetector(
+                onTap: _followLoading ? null : _toggleFollow,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  height: 46,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: _isFollowing
+                        ? Colors.white.withOpacity(0.08)
+                        : AppColors.accent,
+                    borderRadius: BorderRadius.circular(30),
+                    border: _isFollowing
+                        ? Border.all(color: Colors.white.withOpacity(0.2))
+                        : null,
+                  ),
+                  child: Center(
+                    child: _followLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            _isFollowing ? "Unfollow" : "Follow",
+                            style: TextStyle(
+                              color: _isFollowing
+                                  ? Colors.white70
+                                  : Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+            ),
+
+          "Stories".text.white.bold.xl2.make().px16(),
+          12.heightBox,
+
+          Expanded(
+            child: stories.isEmpty
+                ? Center(
+                    child: "No published stories yet".text
+                        .color(Colors.white60)
+                        .lg
+                        .make(),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    itemCount: stories.length,
+                    itemBuilder: (context, index) {
+                      final story = stories[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _StoryCard(
+                          story: story,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ReaderScreen(story: story),
+                              ),
+                            );
+                          },
+                          trailing: PopupMenuButton<String>(
+                            icon: const Icon(
+                              Icons.more_vert,
+                              color: Colors.white70,
+                            ),
+                            color: Colors.black87,
+                            onSelected: (value) {
+                              if (value == 'edit') {
+                                // edit
+                              } else if (value == 'delete') {
+                                // delete
+                              }
+                            },
+                            itemBuilder: (context) => const [
+                              PopupMenuItem(value: 'edit', child: Text('Edit')),
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ]),
       ),
     );
   }
@@ -286,14 +358,11 @@ class _OtherProfileScreenState extends State<OtherProfileScreen> {
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: Colors.white.withOpacity(0.10)),
         ),
-        child: VStack(
-          [
-            value.text.white.bold.xl2.make(),
-            6.heightBox,
-            label.text.color(Colors.white60).sm.make(),
-          ],
-          alignment: MainAxisAlignment.center,
-        ),
+        child: VStack([
+          value.text.white.bold.xl2.make(),
+          6.heightBox,
+          label.text.color(Colors.white60).sm.make(),
+        ], alignment: MainAxisAlignment.center),
       ),
     );
   }
@@ -302,11 +371,9 @@ class _OtherProfileScreenState extends State<OtherProfileScreen> {
 class _StoryCard extends StatelessWidget {
   final StoryModel story;
   final VoidCallback onTap;
+  final Widget? trailing;
 
-  const _StoryCard({
-    required this.story,
-    required this.onTap,
-  });
+  const _StoryCard({required this.story, required this.onTap, this.trailing});
 
   @override
   Widget build(BuildContext context) {
@@ -320,7 +387,9 @@ class _StoryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
-            borderRadius: const BorderRadius.horizontal(left: Radius.circular(18)),
+            borderRadius: const BorderRadius.horizontal(
+              left: Radius.circular(18),
+            ),
             child: Image.network(
               story.coverUrl,
               width: 90,
@@ -331,10 +400,7 @@ class _StoryCard extends StatelessWidget {
                   width: 90,
                   height: 120,
                   color: Colors.white10,
-                  child: const Icon(
-                    Icons.broken_image,
-                    color: Colors.white54,
-                  ),
+                  child: const Icon(Icons.broken_image, color: Colors.white54),
                 );
               },
             ),
@@ -342,33 +408,37 @@ class _StoryCard extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(12),
-              child: VStack(
-                [
-                  Text(
-                    story.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+              child: VStack([
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        story.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                  ),
-                  6.heightBox,
-                  Text(
-                    story.author,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white60),
-                  ),
-                  6.heightBox,
-                  Text(
-                    "Genre: ${story.genre}",
-                    style: const TextStyle(color: Colors.white54),
-                  ),
-                ],
-                crossAlignment: CrossAxisAlignment.start,
-              ),
+                    if (trailing != null) trailing!,
+                  ],
+                ),
+                6.heightBox,
+                Text(
+                  story.author,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white60),
+                ),
+                6.heightBox,
+                Text(
+                  "Genre: ${story.genre}",
+                  style: const TextStyle(color: Colors.white54),
+                ),
+              ], crossAlignment: CrossAxisAlignment.start),
             ),
           ),
         ],

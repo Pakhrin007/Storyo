@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:storyo/core/colors.dart';
 import 'package:storyo/core/routes.dart';
@@ -11,21 +13,9 @@ class Onboardingscreen extends StatefulWidget {
 }
 
 class _OnboardingscreenState extends State<Onboardingscreen> {
-  final List<String> topics = [
-    "Short Stories",
-    "Audiobooks",
-    "Deep Dives",
-    "Daily News",
-    "Classics",
-    "Sci-Fi",
-    "Biography",
-    "Poetry",
-    "Self-Improvement",
-    "Technology",
-    "Philosophy",
-  ];
+  final List<String> topics = ["Fantasy", "Romance", "Sci-Fi", "Mystery"];
 
-  final Set<String> selected = {"Short Stories", "Deep Dives", "Biography"};
+  final Set<String> selected = {"Fantasy", "Romance", "Sci-Fi", "Mystery"};
 
   @override
   Widget build(BuildContext context) {
@@ -54,14 +44,22 @@ class _OnboardingscreenState extends State<Onboardingscreen> {
 
           24.heightBox,
 
-          "Personalize your feed".text.textStyle(TextStyle(fontFamily: 'libertin')).white.bold.xl4.make().px20().centered(),
+          "Personalize your feed".text
+              .textStyle(TextStyle(fontFamily: 'libertin'))
+              .white
+              .bold
+              .xl4
+              .make()
+              .px20()
+              .centered(),
           10.heightBox,
 
           "Choose 3 or more topics to help us\n tailor your reading experience."
               .text
               .color(Colors.white60)
               .lg
-              .align(TextAlign.center).textStyle(TextStyle(fontFamily: 'libertin'))
+              .align(TextAlign.center)
+              .textStyle(TextStyle(fontFamily: 'libertin'))
               .make()
               .px20()
               .centered(),
@@ -74,7 +72,7 @@ class _OnboardingscreenState extends State<Onboardingscreen> {
             runSpacing: 12,
             alignment: WrapAlignment.center,
             children: topics.map((t) => _topicChip(t)).toList(),
-          ).px16(),
+          ).centered(),
 
           const Spacer(),
 
@@ -82,8 +80,41 @@ class _OnboardingscreenState extends State<Onboardingscreen> {
           _primaryButton(
             text: "Continue",
             icon: Icons.arrow_forward,
-            onTap: () {
-              Navigator.pushNamed(context, MyRoutes.onBoardingScreenSuccess);
+            onTap: () async {
+              final user = FirebaseAuth.instance.currentUser;
+
+              if (user == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Please login first")),
+                );
+                return;
+              }
+
+              if (selected.length < 3) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Please choose at least 3 topics"),
+                  ),
+                );
+                return;
+              }
+
+              try {
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(user.uid)
+                    .set({
+                      'readingPreferences': selected.toList(),
+                      'updatedAt': FieldValue.serverTimestamp(),
+                    }, SetOptions(merge: true));
+
+                if (!mounted) return;
+                Navigator.pushNamed(context, MyRoutes.onBoardingScreenSuccess);
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Failed to save preferences: $e")),
+                );
+              }
             },
           ).px16(),
 
@@ -92,8 +123,6 @@ class _OnboardingscreenState extends State<Onboardingscreen> {
       ),
     );
   }
-
-  
 
   Widget _topicChip(String text) {
     final isSelected = selected.contains(text);
@@ -156,7 +185,12 @@ class _OnboardingscreenState extends State<Onboardingscreen> {
       ),
       child: HStack([
         const Spacer(),
-        text.text.textStyle(TextStyle(fontFamily: 'libertin')).white.bold.xl.make(),
+        text.text
+            .textStyle(TextStyle(fontFamily: 'libertin'))
+            .white
+            .bold
+            .xl
+            .make(),
         10.widthBox,
 
         Icon(icon, color: Colors.white),
