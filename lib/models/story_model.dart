@@ -5,6 +5,7 @@ class StoryModel {
   final String coverUrl;
   final String pdfUrl;
   final String author;
+  final String? authorId;
   final bool isAsset;
 
   final List<String> tags;
@@ -19,6 +20,7 @@ class StoryModel {
     required this.coverUrl,
     required this.pdfUrl,
     required this.author,
+    this.authorId,
     this.isAsset = false,
     this.tags = const [],
     this.coverFileName,
@@ -43,6 +45,7 @@ class StoryModel {
       coverUrl: data['coverUrl'] ?? '',
       pdfUrl: data['pdfUrl'] ?? '',
       author: data['authorName'] ?? data['authorEmail'] ?? 'Unknown Author',
+      authorId: data['authorId'],
       isAsset: false,
       tags: parsedTags,
       coverFileName: data['coverFileName'],

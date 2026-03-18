@@ -16,4 +16,5 @@ class MyRoutes{
 
   static const settingsScreen = "/SettingsScreen";
   static const searchUsersPage = "/SearchUsersPage";
+  static const notificationsPage = "/NotificationsPage";
 }

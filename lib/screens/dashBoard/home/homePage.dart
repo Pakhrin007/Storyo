@@ -99,7 +99,9 @@ class _HomepageState extends State<Homepage> {
           children: [
             TopBar(
               onAvatarTap: () => setState(() => _tabIndex = 3),
-              onBellTap: () {},
+              onBellTap: () {
+                Navigator.pushNamed(context, MyRoutes.notificationsPage);
+              },
             ),
 
             Expanded(

@@ -1,9 +1,11 @@
 import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:storyo/services/notification_service.dart';
 
 class FollowService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final NotificationService _notificationService = NotificationService();
 
   /// Follow [targetUid]. Updates subcollections and denormalized counts atomically.
   Future<void> followUser({
@@ -58,6 +60,9 @@ class FollowService {
       );
 
       await batch.commit();
+
+      // Notify the target user about the new follower.
+      _notificationService.notifyFollow(targetUid: targetUid);
     } catch (e) {
       log('FollowService.followUser error: $e');
       rethrow;
