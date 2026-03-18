@@ -4,9 +4,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:storyo/models/comment_model.dart';
 import 'package:storyo/models/story_model.dart';
+import 'package:storyo/services/notification_service.dart';
 
 class InteractionService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final NotificationService _notificationService = NotificationService();
 
   // ── Likes ──────────────────────────────────────────────────────────────────
 
@@ -31,6 +33,7 @@ class InteractionService {
     required String storyAuthor,
     required String storyGenre,
     required String storyPdfUrl,
+    String? authorUid,
   }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -73,6 +76,15 @@ class InteractionService {
       );
 
       await batch.commit();
+
+      // Notify the story author about the like.
+      if (authorUid != null) {
+        _notificationService.notifyLike(
+          storyId: storyId,
+          storyTitle: storyTitle,
+          authorUid: authorUid,
+        );
+      }
     } catch (e) {
       log('InteractionService.likeStory error: $e');
       rethrow;
@@ -165,6 +177,7 @@ class InteractionService {
     required String storyId,
     required String storyTitle,
     required String text,
+    String? authorUid,
   }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -210,6 +223,16 @@ class InteractionService {
       );
 
       await batch.commit();
+
+      // Notify the story author about the comment.
+      if (authorUid != null) {
+        _notificationService.notifyComment(
+          storyId: storyId,
+          storyTitle: storyTitle,
+          authorUid: authorUid,
+          commentText: text.trim(),
+        );
+      }
     } catch (e) {
       log('InteractionService.addComment error: $e');
       rethrow;

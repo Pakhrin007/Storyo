@@ -63,6 +63,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
           storyAuthor: widget.story.author,
           storyGenre: widget.story.genre,
           storyPdfUrl: widget.story.pdfUrl,
+          authorUid: widget.story.authorId,
         );
       }
     } catch (_) {
@@ -196,6 +197,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
         storyId: widget.story.id,
         storyTitle: widget.story.title,
         text: text,
+        authorUid: widget.story.authorId,
       );
       _controller.clear();
       widget.onCommentAdded();

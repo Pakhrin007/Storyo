@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 import 'package:flutter/material.dart';
 import 'package:storyo/core/routes.dart';
@@ -6,6 +7,7 @@ import 'package:storyo/screens/auth/login_screen.dart';
 import 'package:storyo/screens/auth/register_screen.dart';
 import 'package:storyo/screens/dashBoard/home/homePage.dart';
 import 'package:storyo/screens/explore/explore_screen.dart';
+import 'package:storyo/screens/notifications/notifications_screen.dart';
 import 'package:storyo/screens/on_boarding_screen/onBoardingScreen.dart';
 import 'package:storyo/screens/on_boarding_screen/onBoardingScreenSuccess.dart';
 import 'package:storyo/screens/on_boarding_screen/splash_screen.dart';
@@ -14,11 +16,24 @@ import 'package:storyo/screens/search/search_users_screen.dart';
 import 'package:storyo/screens/settings/settings_screen.dart';
 import 'package:storyo/screens/story/create_story_screen.dart';
 import 'package:storyo/screens/library/library_screen.dart';
+import 'package:storyo/services/notification_service.dart';
+
+/// Top-level handler for background FCM messages.
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Set up FCM background handler.
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  // Initialize FCM token (permission + token storage).
+  await NotificationService().initFCMToken();
 
   runApp(const MyApp());
 }
@@ -44,6 +59,7 @@ class MyApp extends StatelessWidget {
         MyRoutes.profilePage: (context) => const ProfileScreen(),
         MyRoutes.createStoryPage: (context) => const CreateStoryScreen(),
         MyRoutes.searchUsersPage: (context) => const SearchUsersScreen(),
+        MyRoutes.notificationsPage: (context) => const NotificationsScreen(),
       },
     );
   }
