@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:storyo/core/colors.dart';
+import 'package:storyo/core/routes.dart';
 import 'package:storyo/screens/auth/auth_service.dart';
 import 'package:velocity_x/velocity_x.dart';
 
@@ -14,7 +15,6 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-
   final _auth = AuthService();
 
   final _name = TextEditingController();
@@ -22,7 +22,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _password = TextEditingController();
 
   @override
-  void dispose(){
+  void dispose() {
     super.dispose();
     _name.dispose();
     _email.dispose();
@@ -33,8 +33,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
-      
-
         backgroundColor: AppColors.secondary,
 
         body: SingleChildScrollView(
@@ -43,16 +41,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 15.heightBox,
-                 Center(
-                  
-                  child: Image.asset(
-                    "assets/logo/storyo.png",
-                    height: 200,
-                  ),
+                Center(
+                  child: Image.asset("assets/logo/storyo.png", height: 200),
                 ),
                 10.heightBox,
                 Center(
-                  child: "Create Your Account".text.color(AppColors.primary)
+                  child: "Create Your Account".text
+                      .color(AppColors.primary)
                       .textStyle(
                         TextStyle(
                           fontFamily: "libertin",
@@ -69,13 +64,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     controller: _name,
                     style: TextStyle(color: AppColors.primary),
                     decoration: InputDecoration(
-                      prefixIcon: Icon(Icons.email,color: AppColors.primary,),
+                      prefixIcon: Icon(Icons.email, color: AppColors.primary),
                       labelText: "Enter Your FullName",
                       labelStyle: TextStyle(
                         fontSize: 16,
                         fontFamily: 'libertin',
                         fontWeight: FontWeight.w500,
-                        color: AppColors.primary
+                        color: AppColors.primary,
                       ),
                       hintText: 'FullName',
                       filled: true,
@@ -104,7 +99,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     controller: _email,
                     style: const TextStyle(color: AppColors.primary),
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.email, color: AppColors.primary),
+                      prefixIcon: const Icon(
+                        Icons.email,
+                        color: AppColors.primary,
+                      ),
                       labelText: "Enter Your Email",
                       labelStyle: const TextStyle(color: AppColors.primary),
                       hintText: "E-mail",
@@ -132,7 +130,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     obscureText: true,
                     style: const TextStyle(color: AppColors.primary),
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.email, color: AppColors.primary),
+                      prefixIcon: const Icon(
+                        Icons.email,
+                        color: AppColors.primary,
+                      ),
                       labelText: "Enter Your Password",
                       labelStyle: const TextStyle(color: AppColors.primary),
                       hintText: "Password",
@@ -180,33 +181,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               )
                               .make()
                               .onInkTap(() async {
-                                final user = await _auth.createUserWithEmailAndPassword(
-                                _email.text.trim(),
-                                _password.text.trim(),
-                                 );
+                                final user = await _auth
+                                    .createUserWithEmailAndPassword(
+                                      _email.text.trim(),
+                                      _password.text.trim(),
+                                    );
 
-                                  if (user != null) {
-    // Save user profile to Firestore so other users can find them
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .set({
-      'uid': user.uid,
-      'name': _name.text.trim(),
-      'fullName': _name.text.trim(),
-      'email': _email.text.trim(),
-      'createdAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+                                if (user != null) {
+                                  // Save user profile to Firestore so other users can find them
+                                  await FirebaseFirestore.instance
+                                      .collection('users')
+                                      .doc(user.uid)
+                                      .set({
+                                        'uid': user.uid,
+                                        'name': _name.text.trim(),
+                                        'fullName': _name.text.trim(),
+                                        'email': _email.text.trim(),
+                                        'createdAt':
+                                            FieldValue.serverTimestamp(),
+                                      }, SetOptions(merge: true));
 
-    log("User Created Successfully!");
-    if (!context.mounted) return;
-    Navigator.pushReplacementNamed(context, '/LoginScreen');
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Signup Failed")),
-    );
-  }
-})
+                                  log("User Created Successfully!");
+                                  if (!context.mounted) return;
+                                  Navigator.pushReplacementNamed(
+                                    context,
+                                    MyRoutes.onBoardingScreen,
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text("Signup Failed"),
+                                    ),
+                                  );
+                                }
+                              }),
                         ),
                       ),
                     ),
@@ -217,7 +225,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    "Already Have Account?".text.color(AppColors.primary)
+                    "Already Have Account?".text
+                        .color(AppColors.primary)
                         .textStyle(
                           TextStyle(fontSize: 16, fontFamily: 'libertin'),
                         )
@@ -230,7 +239,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         .make()
                         .px(5)
                         .onInkTap(() {
-                          Navigator.pushReplacementNamed(context, "/LoginScreen");
+                          Navigator.pushReplacementNamed(
+                            context,
+                            "/LoginScreen",
+                          );
                         }),
                   ],
                 ),
@@ -240,6 +252,5 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       ),
     );
-    
   }
 }

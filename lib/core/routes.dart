@@ -14,7 +14,6 @@ class MyRoutes{
   static const createStoryPage = "/CreateStoryPage";
   static const libraryPage = "/LibraryPage";
 
-  static const settingsScreen = "/SettingsScreen";
   static const searchUsersPage = "/SearchUsersPage";
   static const notificationsPage = "/NotificationsPage";
 }

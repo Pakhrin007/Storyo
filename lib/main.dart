@@ -13,7 +13,6 @@ import 'package:storyo/screens/on_boarding_screen/onBoardingScreenSuccess.dart';
 import 'package:storyo/screens/on_boarding_screen/splash_screen.dart';
 import 'package:storyo/screens/profile/profile_screen.dart';
 import 'package:storyo/screens/search/search_users_screen.dart';
-import 'package:storyo/screens/settings/settings_screen.dart';
 import 'package:storyo/screens/story/create_story_screen.dart';
 import 'package:storyo/screens/library/library_screen.dart';
 import 'package:storyo/services/notification_service.dart';
@@ -53,7 +52,6 @@ class MyApp extends StatelessWidget {
         MyRoutes.homePage: (context) => Homepage(),
         MyRoutes.onBoardingScreen: (context) => Onboardingscreen(),
         MyRoutes.onBoardingScreenSuccess: (context) =>Onboardingscreensuccess(),
-        MyRoutes.settingsScreen: (context) => SettingsScreen(),
         MyRoutes.explorePage: (context) => ExploreScreen(),
         MyRoutes.libraryPage: (context) => const LibraryScreen(),
         MyRoutes.profilePage: (context) => const ProfileScreen(),

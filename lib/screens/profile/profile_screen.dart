@@ -34,6 +34,19 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   final FollowService _followService = FollowService();
   final InteractionService _interactionService = InteractionService();
+  final TextEditingController _fullNameController = TextEditingController();
+  final TextEditingController _newPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _fullNameController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -42,11 +55,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     _loadProfile();
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
+  
 
   Future<void> _deleteStory(StoryModel story) async {
     try {
@@ -102,6 +111,179 @@ class _ProfileScreenState extends State<ProfileScreen>
         ],
       ),
     );
+  }
+
+  void _showEditProfileDialog() {
+    _fullNameController.text = name;
+    _newPasswordController.clear();
+    _confirmPasswordController.clear();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.grey[900],
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: const Text(
+            "Edit Profile",
+            
+            style: TextStyle(color: Colors.white),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _fullNameController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: "Full Name",
+                    labelStyle: const TextStyle(color: Colors.white70),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.05),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _newPasswordController,
+                  obscureText: true,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: "New Password",
+                    labelStyle: const TextStyle(color: Colors.white70),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.05),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _confirmPasswordController,
+                  obscureText: true,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: "Confirm Password",
+                    labelStyle: const TextStyle(color: Colors.white70),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.05),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepPurpleAccent,
+              ),
+              onPressed: () async {
+                await _updateProfile();
+              },
+              child: const Text("Save", style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _updateProfile() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) return;
+
+    final newName = _fullNameController.text.trim();
+    final newPassword = _newPasswordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+
+    if (newName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Full name cannot be empty")),
+      );
+      return;
+    }
+
+    if (newPassword.isNotEmpty) {
+      if (newPassword.length < 6) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Password must be at least 6 characters"),
+          ),
+        );
+        return;
+      }
+
+      if (newPassword != confirmPassword) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Passwords do not match")));
+        return;
+      }
+    }
+
+    try {
+      // Update Firebase Auth display name
+      await user.updateDisplayName(newName);
+
+      // Update Firestore users collection
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'name': newName,
+        'email': user.email,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      // Update password only if entered
+      if (newPassword.isNotEmpty) {
+        await user.updatePassword(newPassword);
+      }
+
+      if (!mounted) return;
+
+      Navigator.pop(context);
+
+      setState(() {
+        name = newName;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Profile updated successfully")),
+      );
+
+      await _loadProfile();
+    } on FirebaseAuthException catch (e) {
+      String message = "Profile update failed";
+
+      if (e.code == 'requires-recent-login') {
+        message =
+            "For security, please log in again before changing your password.";
+      } else {
+        message = e.message ?? message;
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Profile update failed: $e")));
+    }
   }
 
   Future<void> _loadProfile() async {
@@ -202,9 +384,31 @@ class _ProfileScreenState extends State<ProfileScreen>
               const Spacer(),
               "Profile".text.white.bold.xl2.make(),
               const Spacer(),
-              Icon(Icons.settings, color: Colors.white70).p8().onInkTap(() {
-                Navigator.pushNamed(context, MyRoutes.settingsScreen);
-              }),
+              Row(
+                children: [
+                  Icon(Icons.refresh, color: Colors.white70).p8().onInkTap(
+                    () async {
+                      setState(() {
+                        loading = true;
+                      });
+                      await _loadProfile();
+                    },
+                  ),
+                  Icon(Icons.logout, color: Colors.redAccent).p8().onInkTap(
+                    () async {
+                      await FirebaseAuth.instance.signOut();
+
+                      if (!context.mounted) return;
+
+                      Navigator.pushNamedAndRemoveUntil(
+                        context,
+                        MyRoutes.loginScreen,
+                        (route) => false,
+                      );
+                    },
+                  ),
+                ],
+              ),
             ]).px8().py4(),
 
             12.heightBox,
@@ -245,7 +449,27 @@ class _ProfileScreenState extends State<ProfileScreen>
             ],
 
             20.heightBox,
-
+            
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: GestureDetector(
+                onTap: _showEditProfileDialog,
+                child: Container(
+                  height: 42,
+                  width: 180,
+                  decoration: BoxDecoration(
+                    color: Colors.deepPurpleAccent,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: HStack([
+                    const Icon(Icons.edit, color: Colors.white, size: 20),
+                    15.widthBox,
+                    "Edit Profile".text.white.semiBold.make(),
+                  ], alignment: MainAxisAlignment.center),
+                ),
+              ),
+            ),
+20.heightBox,
             // Stats row: followers | following | stories
             HStack([
               _statBox(_followerCount.toString(), "FOLLOWERS"),
@@ -266,7 +490,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                   MaterialPageRoute(builder: (_) => const SearchUsersScreen()),
                 ),
                 child: Container(
-                  height: 42,
+                  height: 52,
+                  width: 190,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(24),
@@ -286,6 +511,8 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
 
             16.heightBox,
+
+            
 
             // Activity tabs
             TabBar(
@@ -385,15 +612,16 @@ class _ProfileScreenState extends State<ProfileScreen>
                                   itemBuilder: (context) => const [
                                     PopupMenuItem(
                                       value: 'edit',
-                                      child: Text('Edit',style: TextStyle(color: Colors.black),),
+                                      child: Text(
+                                        'Edit',
+                                        style: TextStyle(color: Colors.black),
+                                      ),
                                     ),
                                     PopupMenuItem(
                                       value: 'delete',
                                       child: Text(
                                         'Delete',
-                                        style: TextStyle(
-                                          color: Colors.red,
-                                        ),
+                                        style: TextStyle(color: Colors.red),
                                       ),
                                     ),
                                   ],
@@ -526,8 +754,18 @@ class _ProfileScreenState extends State<ProfileScreen>
                 10.widthBox,
                 "Create Story".text.white.bold.xl.make(),
               ], alignment: MainAxisAlignment.center),
-            ).onInkTap(() {
-              Navigator.pushNamed(context, MyRoutes.createStoryPage);
+            ).onInkTap(() async {
+              final result = await Navigator.pushNamed(
+                context,
+                MyRoutes.createStoryPage,
+              );
+
+              if (result == true) {
+                setState(() {
+                  loading = true;
+                });
+                await _loadProfile();
+              }
             }),
       ),
     );
@@ -542,11 +780,15 @@ class _ProfileScreenState extends State<ProfileScreen>
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: Colors.white.withOpacity(0.08)),
         ),
-        child: VStack([
-          value.text.white.bold.xl2.make(),
-          6.heightBox,
-          label.text.color(Colors.white60).sm.make(),
-        ], alignment: MainAxisAlignment.center),
+        child: VStack(
+          [
+            value.text.white.bold.xl2.make(),
+            6.heightBox,
+            label.text.color(Colors.white60).sm.make(),
+          ],
+          alignment: MainAxisAlignment.center,
+          crossAlignment: CrossAxisAlignment.center,
+        ),
       ),
     );
   }

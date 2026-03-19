@@ -1,5 +1,6 @@
 import 'dart:developer';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:storyo/core/colors.dart';
 import 'package:storyo/core/routes.dart';
@@ -143,23 +144,36 @@ class _LoginScreenState extends State<LoginScreen> {
                               .make(),
                         ),
                       ).onInkTap(() async {
-                        final user = await _auth.loginUserWithEmailAndPassword(
-                          _email.text.trim(),
-                          _password.text.trim(),
-                        );
+                        try {
+                          final user = await _auth
+                              .loginUserWithEmailAndPassword(
+                                _email.text.trim(),
+                                _password.text.trim(),
+                              );
 
-                        if (!context.mounted) return;
+                          if (!context.mounted) return;
 
-                        if (user != null) {
-                          log("User Logged In!!");
-                          Navigator.pushReplacementNamed(
-                            context,
-                            MyRoutes.onBoardingScreen,
-                          );
-                        } else {
+                          if (user != null) {
+                            log("User Logged In!!");
+                            Navigator.pushReplacementNamed(
+                              context,
+                              MyRoutes.onBoardingScreen,
+                            );
+                          }
+                        } on FirebaseAuthException catch (e) {
+                          log(
+                            "Login error: [${e.code}] ${e.message}",
+                          ); // 🔍 Detailed error
+                          if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Login Failed")),
+                            SnackBar(
+                              content: Text(
+                                "Error: ${e.message ?? 'Login failed'}",
+                              ),
+                            ),
                           );
+                        } catch (e) {
+                          log("Unexpected error: $e");
                         }
                       }),
                 ),

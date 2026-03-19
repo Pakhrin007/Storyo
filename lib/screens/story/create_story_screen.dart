@@ -319,13 +319,6 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                 .centered(),
             const Spacer(),
             
-            // const Spacer(),
-            // "Save\nDraft".text
-                // .color(Colors.deepPurpleAccent)
-                // .semiBold
-                // .make()
-                // .p8()
-                // .onInkTap(_saveDraft),
           ]).px8(),
           16.heightBox,
           Expanded(
