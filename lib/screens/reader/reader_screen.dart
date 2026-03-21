@@ -5,6 +5,7 @@ import 'package:storyo/core/colors.dart';
 import 'package:storyo/models/comment_model.dart';
 import 'package:storyo/models/story_model.dart';
 import 'package:storyo/services/interaction_service.dart';
+import 'package:storyo/services/reading_progress_service.dart';
 
 class ReaderScreen extends StatefulWidget {
   final StoryModel story;
@@ -17,16 +18,25 @@ class ReaderScreen extends StatefulWidget {
 
 class _ReaderScreenState extends State<ReaderScreen> {
   final InteractionService _service = InteractionService();
+  final ReadingProgressService _readingProgressService =
+      ReadingProgressService();
+  final PdfViewerController _pdfController = PdfViewerController();
 
   bool _liked = false;
   bool _likeLoading = false;
   int _likeCount = 0;
   int _commentCount = 0;
 
+  int _currentPage = 1;
+  int _totalPages = 0;
+  int _savedPageToJump = 1;
+  bool _initialProgressLoaded = false;
+
   @override
   void initState() {
     super.initState();
     _loadInteractionState();
+    _loadSavedProgress();
   }
 
   Future<void> _loadInteractionState() async {
@@ -40,6 +50,19 @@ class _ReaderScreenState extends State<ReaderScreen> {
       _liked = results[0] as bool;
       _likeCount = results[1] as int;
       _commentCount = results[2] as int;
+    });
+  }
+
+  Future<void> _loadSavedProgress() async {
+    final progress = await _readingProgressService.getReadingProgress(
+      widget.story.id,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _savedPageToJump = (progress?['currentPage'] ?? 1) as int;
+      _initialProgressLoaded = true;
     });
   }
 
@@ -77,6 +100,14 @@ class _ReaderScreenState extends State<ReaderScreen> {
     }
   }
 
+  Future<void> _saveCurrentProgress() async {
+    await _readingProgressService.updateReadingProgress(
+      storyId: widget.story.id,
+      currentPage: _currentPage,
+      totalPages: _totalPages,
+    );
+  }
+
   void _openComments() {
     showModalBottomSheet(
       context: context,
@@ -92,66 +123,119 @@ class _ReaderScreenState extends State<ReaderScreen> {
           if (mounted) setState(() => _commentCount++);
         },
         onCommentDeleted: () {
-          if (mounted) setState(() { if (_commentCount > 0) _commentCount--; });
+          if (mounted) {
+            setState(() {
+              if (_commentCount > 0) _commentCount--;
+            });
+          }
         },
       ),
     );
   }
 
   @override
+  void dispose() {
+    _saveCurrentProgress();
+    _pdfController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.secondary,
-      appBar: AppBar(
+    return PopScope(
+      onPopInvoked: (_) async {
+        await _saveCurrentProgress();
+      },
+      child: Scaffold(
         backgroundColor: AppColors.secondary,
-        title: Text(
-          widget.story.title,
-          style: const TextStyle(color: Colors.white),
+        appBar: AppBar(
+          backgroundColor: AppColors.secondary,
+          title: Text(
+            widget.story.title,
+            style: const TextStyle(color: Colors.white),
+          ),
+          iconTheme: const IconThemeData(color: Colors.white),
+          actions: [
+            GestureDetector(
+              onTap: FirebaseAuth.instance.currentUser != null
+                  ? _toggleLike
+                  : null,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  children: [
+                    Icon(
+                      _liked ? Icons.favorite : Icons.favorite_border,
+                      color: _liked ? Colors.redAccent : Colors.white70,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$_likeCount',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            GestureDetector(
+              onTap: _openComments,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8, right: 16),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.chat_bubble_outline,
+                      color: Colors.white70,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$_commentCount',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          // Like button
-          GestureDetector(
-            onTap: FirebaseAuth.instance.currentUser != null ? _toggleLike : null,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                children: [
-                  Icon(
-                    _liked ? Icons.favorite : Icons.favorite_border,
-                    color: _liked ? Colors.redAccent : Colors.white70,
-                    size: 22,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '$_likeCount',
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                ],
+        body: !_initialProgressLoaded
+            ? const Center(child: CircularProgressIndicator())
+            : SfPdfViewer.network(
+                widget.story.pdfUrl,
+                controller: _pdfController,
+                onDocumentLoaded: (details) async {
+                  _totalPages = details.document.pages.count;
+
+                  await _readingProgressService.saveContinueReading(
+                    storyId: widget.story.id,
+                    title: widget.story.title,
+                    authorName: widget.story.author,
+                    coverUrl: widget.story.coverUrl,
+                    pdfUrl: widget.story.pdfUrl,
+                    genre: widget.story.genre,
+                    currentPage: _savedPageToJump,
+                    totalPages: _totalPages,
+                  );
+
+                  if (_savedPageToJump > 1 && _savedPageToJump <= _totalPages) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _pdfController.jumpToPage(_savedPageToJump);
+                    });
+                  }
+                },
+                onPageChanged: (details) {
+                  _currentPage = details.newPageNumber;
+
+                  _readingProgressService.updateReadingProgress(
+                    storyId: widget.story.id,
+                    currentPage: _currentPage,
+                    totalPages: _totalPages, // already set earlier
+                  );
+                },
               ),
-            ),
-          ),
-          // Comment button
-          GestureDetector(
-            onTap: _openComments,
-            child: Padding(
-              padding: const EdgeInsets.only(left: 8, right: 16),
-              child: Row(
-                children: [
-                  const Icon(Icons.chat_bubble_outline,
-                      color: Colors.white70, size: 22),
-                  const SizedBox(width: 4),
-                  Text(
-                    '$_commentCount',
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
       ),
-      body: SfPdfViewer.network(widget.story.pdfUrl),
     );
   }
 }
@@ -178,8 +262,7 @@ class _CommentsSheet extends StatefulWidget {
 class _CommentsSheetState extends State<_CommentsSheet> {
   final TextEditingController _controller = TextEditingController();
   bool _submitting = false;
-  final String _currentUid =
-      FirebaseAuth.instance.currentUser?.uid ?? '';
+  final String _currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
 
   @override
   void dispose() {
@@ -203,9 +286,9 @@ class _CommentsSheetState extends State<_CommentsSheet> {
       widget.onCommentAdded();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to post comment: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to post comment: $e')));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -220,9 +303,9 @@ class _CommentsSheetState extends State<_CommentsSheet> {
       widget.onCommentDeleted();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete comment: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to delete comment: $e')));
     }
   }
 
@@ -238,7 +321,6 @@ class _CommentsSheetState extends State<_CommentsSheet> {
       builder: (_, scrollController) {
         return Column(
           children: [
-            // Handle
             Container(
               width: 40,
               height: 4,
@@ -248,14 +330,15 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-
-            // Title
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: Row(
                 children: [
-                  const Icon(Icons.chat_bubble_outline,
-                      color: Colors.white70, size: 20),
+                  const Icon(
+                    Icons.chat_bubble_outline,
+                    color: Colors.white70,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   const Text(
                     'Comments',
@@ -268,10 +351,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                 ],
               ),
             ),
-
             const Divider(color: Colors.white12, height: 1),
-
-            // Comment list
             Expanded(
               child: StreamBuilder<List<CommentModel>>(
                 stream: widget.service.commentsStream(widget.story.id),
@@ -294,7 +374,9 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                   return ListView.builder(
                     controller: scrollController,
                     padding: const EdgeInsets.symmetric(
-                        vertical: 8, horizontal: 16),
+                      vertical: 8,
+                      horizontal: 16,
+                    ),
                     itemCount: comments.length,
                     itemBuilder: (_, i) {
                       final c = comments[i];
@@ -325,12 +407,17 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                         subtitle: Text(
                           c.text,
                           style: const TextStyle(
-                              color: Colors.white70, fontSize: 14),
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
                         ),
                         trailing: isOwn
                             ? IconButton(
-                                icon: const Icon(Icons.delete_outline,
-                                    color: Colors.white38, size: 20),
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  color: Colors.white38,
+                                  size: 20,
+                                ),
                                 onPressed: () => _delete(c),
                               )
                             : null,
@@ -340,10 +427,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                 },
               ),
             ),
-
             const Divider(color: Colors.white12, height: 1),
-
-            // Input row
             if (isLoggedIn)
               Padding(
                 padding: EdgeInsets.fromLTRB(
@@ -361,12 +445,15 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                         maxLines: null,
                         decoration: InputDecoration(
                           hintText: 'Write a comment…',
-                          hintStyle:
-                              TextStyle(color: Colors.white.withOpacity(0.4)),
+                          hintStyle: TextStyle(
+                            color: Colors.white.withOpacity(0.4),
+                          ),
                           filled: true,
                           fillColor: Colors.white.withOpacity(0.07),
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 10),
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
                             borderSide: BorderSide.none,
@@ -383,8 +470,10 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                           )
                         : IconButton(
                             onPressed: _submit,
-                            icon: const Icon(Icons.send_rounded,
-                                color: AppColors.accent),
+                            icon: const Icon(
+                              Icons.send_rounded,
+                              color: AppColors.accent,
+                            ),
                           ),
                   ],
                 ),

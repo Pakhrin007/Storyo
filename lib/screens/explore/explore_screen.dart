@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:storyo/core/colors.dart';
 import 'package:storyo/models/story_model.dart';
 import 'package:storyo/screens/reader/reader_screen.dart';
+import 'package:storyo/services/reading_progress_service.dart';
 import 'package:velocity_x/velocity_x.dart';
 
 class ExploreScreen extends StatefulWidget {
@@ -17,6 +18,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
   List<StoryModel> stories = [];
   List<String> genres = [];
   bool loading = true;
+
+  final ReadingProgressService _readingProgressService =
+      ReadingProgressService();
 
   @override
   void initState() {
@@ -42,20 +46,49 @@ class _ExploreScreenState extends State<ExploreScreen> {
         }
       }
 
+      if (!mounted) return;
+
       setState(() {
         stories = loadedStories;
         genres = genreSet.toList();
         loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         loading = false;
       });
 
-      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Failed to load stories: $e")));
+    }
+  }
+
+  Future<void> _openStory(StoryModel item) async {
+    try {
+      await _readingProgressService.saveContinueReading(
+        storyId: item.id,
+        title: item.title,
+        authorName: item.author,
+        coverUrl: item.coverUrl,
+        pdfUrl: item.pdfUrl,
+        genre: item.genre,
+      );
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => ReaderScreen(story: item)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to open story: $e")));
     }
   }
 
@@ -142,13 +175,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   .toList(),
             ).px12(),
             18.heightBox,
-            HStack([
-              "Discover New Stories".text.white.bold.xl2
-                  .textStyle(const TextStyle(fontFamily: 'libertin'))
-                  .make(),
-              const Spacer(),
-              "See all".text.color(AppColors.accent).semiBold.lg.make(),
-            ]).px16(),
+
             14.heightBox,
             Expanded(
               child: TabBarView(
@@ -248,11 +275,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
           .make(),
       6.heightBox,
       item.author.text.color(Colors.white60).lg.make(),
-    ], crossAlignment: CrossAxisAlignment.start).onInkTap(() {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => ReaderScreen(story: item)),
-      );
+    ], crossAlignment: CrossAxisAlignment.start).onInkTap(() async {
+      await _openStory(item);
     });
   }
 }

@@ -1,5 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:storyo/core/routes.dart';
+import 'package:storyo/models/story_model.dart';
+import 'package:storyo/screens/reader/reader_screen.dart';
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
@@ -9,44 +12,84 @@ class LibraryScreen extends StatefulWidget {
 }
 
 class _LibraryScreenState extends State<LibraryScreen> {
-  int _selectedTab = 0;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchText = '';
 
-  final List<Map<String, String>> allStories = const [
-    {
-      "title": "The Midnight Library",
-      "author": "Matt Haig",
-      "time": "Last read 2 hours ago",
-    },
-    {
-      "title": "The Alchemist",
-      "author": "Paulo Coelho",
-      "time": "Last read yesterday",
-    },
-    {
-      "title": "Normal People",
-      "author": "Sally Rooney",
-      "time": "Last read 3 days ago",
-    },
-    {"title": "Deep Work", "author": "Cal Newport", "time": "Last read Dec 12"},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(() {
+        _searchText = _searchController.text.trim().toLowerCase();
+      });
+    });
+  }
 
-  final List<Map<String, String>> favoriteStories = const [
-    {
-      "title": "The Silent Patient",
-      "author": "Alex Michaelides",
-      "time": "Added to favorites",
-    },
-    {
-      "title": "Atomic Habits",
-      "author": "James Clear",
-      "time": "Added to favorites",
-    },
-  ];
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> _continueReadingStream() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const Stream.empty();
+    }
+
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('continueReading')
+        .orderBy('lastReadAt', descending: true)
+        .snapshots();
+  }
+
+  String _formatLastRead(Timestamp? timestamp) {
+    if (timestamp == null) return "Last read recently";
+
+    final now = DateTime.now();
+    final date = timestamp.toDate();
+    final diff = now.difference(date);
+
+    if (diff.inMinutes < 1) {
+      return "Last read just now";
+    } else if (diff.inHours < 1) {
+      return "Last read ${diff.inMinutes} min ago";
+    } else if (diff.inDays < 1) {
+      return "Last read ${diff.inHours} hours ago";
+    } else if (diff.inDays == 1) {
+      return "Last read yesterday";
+    } else if (diff.inDays < 7) {
+      return "Last read ${diff.inDays} days ago";
+    } else {
+      return "Last read on ${date.day}/${date.month}/${date.year}";
+    }
+  }
+
+  StoryModel _mapToStoryModel(Map<String, dynamic> data) {
+    return StoryModel(
+      id: data['id'] ?? data['storyId'] ?? '',
+      title: data['title'] ?? '',
+      author: data['authorName'] ?? data['author'] ?? '',
+      authorId: data['authorId'] ?? '',
+      coverUrl: data['coverUrl'] ?? '',
+      pdfUrl: data['pdfUrl'] ?? '',
+      genre: data['genre'] ?? '',
+    );
+  }
+
+  void _openStory(Map<String, dynamic> data) {
+    final story = _mapToStoryModel(data);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ReaderScreen(story: story)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final currentList = _selectedTab == 0 ? allStories : favoriteStories;
-
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -68,29 +111,33 @@ class _LibraryScreenState extends State<LibraryScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 6),
-
+            const SizedBox(height: 8),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  _TopTabButton(
-                    title: "All Stories",
-                    selected: _selectedTab == 0,
-                    onTap: () => setState(() => _selectedTab = 0),
-                  ),
-                  const SizedBox(width: 24),
-                  _TopTabButton(
-                    title: "Favorites",
-                    selected: _selectedTab == 1,
-                    onTap: () => setState(() => _selectedTab = 1),
-                  ),
-                ],
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Continue Reading",
+                      style: TextStyle(
+                        color: Color(0xFF1E88FF),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 2.5,
+                      width: 110,
+                      color: const Color(0xFF1E88FF),
+                    ),
+                  ],
+                ),
               ),
             ),
-
-            const SizedBox(height: 14),
-
+            const SizedBox(height: 18),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Container(
@@ -100,45 +147,44 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(color: Colors.white.withOpacity(0.06)),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    SizedBox(width: 14),
-                    Icon(Icons.search, color: Colors.white38, size: 20),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 14),
+                    const Icon(Icons.search, color: Colors.white38, size: 20),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: TextField(
-                        style: TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
+                        controller: _searchController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
                           border: InputBorder.none,
                           hintText: "Search your library...",
                           hintStyle: TextStyle(color: Colors.white38),
                         ),
                       ),
                     ),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                   ],
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
-                children: [
+                children: const [
                   Text(
-                    _selectedTab == 0 ? "Continue Reading" : "Favorites",
-                    style: const TextStyle(
+                    "Continue Reading",
+                    style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const Spacer(),
+                  Spacer(),
                   Text(
-                    _selectedTab == 0 ? "SORT BY RECENT" : "SORT BY NAME",
-                    style: const TextStyle(
+                    "SORT BY RECENT",
+                    style: TextStyle(
                       color: Color(0xFF1E88FF),
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
@@ -147,21 +193,78 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 ],
               ),
             ),
-
             const SizedBox(height: 14),
-
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                itemCount: currentList.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 14),
-                itemBuilder: (context, index) {
-                  final item = currentList[index];
-                  return _LibraryBookTile(
-                    title: item["title"] ?? "",
-                    author: item["author"] ?? "",
-                    timeText: item["time"] ?? "",
-                    colorIndex: index,
+              child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: _continueReadingStream(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF1E88FF),
+                      ),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'Error: ${snapshot.error}',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    );
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        "No stories in continue reading yet",
+                        style: TextStyle(color: Colors.white54, fontSize: 15),
+                      ),
+                    );
+                  }
+
+                  final docs = snapshot.data!.docs.where((doc) {
+                    final data = doc.data();
+                    final title = (data['title'] ?? '')
+                        .toString()
+                        .toLowerCase();
+                    final author = (data['authorName'] ?? data['author'] ?? '')
+                        .toString()
+                        .toLowerCase();
+
+                    if (_searchText.isEmpty) return true;
+                    return title.contains(_searchText) ||
+                        author.contains(_searchText);
+                  }).toList();
+
+                  if (docs.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        "No matching stories found",
+                        style: TextStyle(color: Colors.white54, fontSize: 15),
+                      ),
+                    );
+                  }
+
+                  return ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    itemCount: docs.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 14),
+                    itemBuilder: (context, index) {
+                      final data = docs[index].data();
+
+                      return GestureDetector(
+                        onTap: () => _openStory(data),
+                        child: _LibraryBookTile(
+                          title: data['title'] ?? 'Untitled',
+                          author:
+                              data['authorName'] ?? data['author'] ?? 'Unknown',
+                          timeText: _formatLastRead(data['lastReadAt']),
+                          coverUrl: data['coverUrl'] ?? '',
+                        ),
+                      );
+                    },
                   );
                 },
               ),
@@ -173,65 +276,18 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 }
 
-class _TopTabButton extends StatelessWidget {
-  final String title;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _TopTabButton({
-    required this.title,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              color: selected ? const Color(0xFF1E88FF) : Colors.white70,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            height: 2.5,
-            width: 70,
-            color: selected ? const Color(0xFF1E88FF) : Colors.transparent,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _LibraryBookTile extends StatelessWidget {
   final String title;
   final String author;
   final String timeText;
-  final int colorIndex;
+  final String coverUrl;
 
   const _LibraryBookTile({
     required this.title,
     required this.author,
     required this.timeText,
-    required this.colorIndex,
+    required this.coverUrl,
   });
-
-  Color _coverColor() {
-    const colors = [
-      Color(0xFFE8DDC7),
-      Color(0xFFD9D7C8),
-      Color(0xFF2F7F73),
-      Color(0xFFD7CCAF),
-    ];
-    return colors[colorIndex % colors.length];
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -241,7 +297,7 @@ class _LibraryBookTile extends StatelessWidget {
           width: 76,
           height: 102,
           decoration: BoxDecoration(
-            color: _coverColor(),
+            color: const Color(0xFF1A1A1A),
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
@@ -250,17 +306,29 @@ class _LibraryBookTile extends StatelessWidget {
                 offset: const Offset(0, 4),
               ),
             ],
+            image: coverUrl.isNotEmpty
+                ? DecorationImage(
+                    image: NetworkImage(coverUrl),
+                    fit: BoxFit.cover,
+                  )
+                : null,
           ),
-          child: Center(
-            child: Container(
-              width: 42,
-              height: 60,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.35),
-                borderRadius: BorderRadius.circular(6),
-              ),
-            ),
-          ),
+          child: coverUrl.isEmpty
+              ? Center(
+                  child: Container(
+                    width: 42,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Icon(
+                      Icons.menu_book_rounded,
+                      color: Colors.white54,
+                    ),
+                  ),
+                )
+              : null,
         ),
         const SizedBox(width: 14),
         Expanded(
@@ -270,15 +338,19 @@ class _LibraryBookTile extends StatelessWidget {
             children: [
               Text(
                 title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 19,
+                  fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 author,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: Colors.white70, fontSize: 15),
               ),
               const SizedBox(height: 10),
@@ -290,11 +362,14 @@ class _LibraryBookTile extends StatelessWidget {
                     size: 15,
                   ),
                   const SizedBox(width: 6),
-                  Text(
-                    timeText,
-                    style: const TextStyle(
-                      color: Colors.white38,
-                      fontSize: 12.5,
+                  Expanded(
+                    child: Text(
+                      timeText,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 12.5,
+                      ),
                     ),
                   ),
                 ],
@@ -308,37 +383,3 @@ class _LibraryBookTile extends StatelessWidget {
     );
   }
 }
-
-// class _LibraryBottomNav extends StatelessWidget {
-//   final int currentIndex;
-//   final ValueChanged<int> onTap;
-
-//   const _LibraryBottomNav({required this.currentIndex, required this.onTap});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return BottomNavigationBar(
-//       currentIndex: currentIndex,
-//       onTap: onTap,
-//       type: BottomNavigationBarType.fixed,
-//       backgroundColor: const Color(0xFF0B0B0B),
-//       selectedItemColor: const Color(0xFF1E88FF),
-//       unselectedItemColor: Colors.white38,
-//       items: const [
-//         BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: "Home"),
-//         BottomNavigationBarItem(
-//           icon: Icon(Icons.explore_rounded),
-//           label: "Explore",
-//         ),
-//         BottomNavigationBarItem(
-//           icon: Icon(Icons.menu_book_rounded),
-//           label: "Library",
-//         ),
-//         BottomNavigationBarItem(
-//           icon: Icon(Icons.settings_rounded),
-//           label: "Settings",
-//         ),
-//       ],
-//     );
-//   }
-// }
