@@ -28,10 +28,8 @@ Future<void> main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Set up FCM background handler.
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  // Initialize FCM token (permission + token storage).
   await NotificationService().initFCMToken();
 
   runApp(const MyApp());

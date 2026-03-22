@@ -746,7 +746,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               height: 56,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: Colors.deepPurpleAccent,
+                color: Colors.blueAccent,
                 borderRadius: BorderRadius.circular(30),
               ),
               child: HStack([
