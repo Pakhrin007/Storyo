@@ -13,9 +13,35 @@ class Onboardingscreen extends StatefulWidget {
 }
 
 class _OnboardingscreenState extends State<Onboardingscreen> {
-  final List<String> topics = ["Fantasy", "Romance", "Sci-Fi", "Mystery"];
+  final List<String> topics = [
+  "Fantasy",
+  "Sci-Fi",
+  "Mystery",
+  "Romance",
+  "Thriller",
+  "Horror",
+  "Adventure",
+  "Drama",
+  "Crime",
+  "Comedy",
+  "Historical",
+  "Action"
+];
 
-  final Set<String> selected = {"Fantasy", "Romance", "Sci-Fi", "Mystery"};
+final Set<String> selected = {
+  "Fantasy",
+  "Sci-Fi",
+  "Mystery",
+  "Romance",
+  "Thriller",
+  "Horror",
+  "Adventure",
+  "Drama",
+  "Crime",
+  "Comedy",
+  "Historical",
+  "Action"
+};
 
   @override
   Widget build(BuildContext context) {

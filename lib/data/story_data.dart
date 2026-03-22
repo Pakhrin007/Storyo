@@ -23,6 +23,14 @@ const List<String> genres = [
   "Sci-Fi",
   "Mystery",
   "Romance",
+  "Thriller",
+  "Horror",
+  "Adventure",
+  "Drama",
+  "Crime",
+  "Comedy",
+  "Historical",
+  "Action"
 ];
 final List<StoryItem> stories = [
   StoryItem(

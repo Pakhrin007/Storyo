@@ -22,8 +22,20 @@ class CreateStoryScreen extends StatefulWidget {
 
 class _CreateStoryScreenState extends State<CreateStoryScreen> {
   int selectedGenre = 0;
-  final genres = ["Fantasy", "Romance", "Sci-Fi", "Mystery"];
-
+final genres = [
+  "Fantasy",
+  "Sci-Fi",
+  "Mystery",
+  "Romance",
+  "Thriller",
+  "Horror",
+  "Adventure",
+  "Drama",
+  "Crime",
+  "Comedy",
+  "Historical",
+  "Action"
+];
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _tagsController = TextEditingController();
 
