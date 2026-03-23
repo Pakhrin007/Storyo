@@ -194,9 +194,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       .doc(user.uid)
                                       .set({
                                         'uid': user.uid,
-                                        'name': _name.text.trim(),
-                                        'fullName': _name.text.trim(),
-                                        'email': _email.text.trim(),
+                                        'name': user.displayName ?? '',
+                                        'fullName': user.displayName ?? '',
+                                        'email': user.email ?? '',
                                         'createdAt':
                                             FieldValue.serverTimestamp(),
                                       }, SetOptions(merge: true));

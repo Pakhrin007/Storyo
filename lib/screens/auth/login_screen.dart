@@ -1,5 +1,6 @@
 import 'dart:developer';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:storyo/core/colors.dart';
@@ -218,6 +219,18 @@ class _LoginScreenState extends State<LoginScreen> {
                         if (!context.mounted) return;
 
                         if (user != null) {
+                           await FirebaseFirestore.instance
+                                      .collection('users')
+                                      .doc(user.uid)
+                                      .set({
+                                        'uid': user.uid,
+                                        'name': user.displayName ?? '',
+                                        'fullName': user.displayName ?? '',
+                                        'email': user.email ?? '',
+                                        'createdAt':
+                                            FieldValue.serverTimestamp(),
+                                      }, SetOptions(merge: true));
+
                           log("Google Login Success");
                           Navigator.pushReplacementNamed(
                             context,
