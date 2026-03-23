@@ -33,7 +33,7 @@ class _Onboardingscreen2successState extends State<Onboardingscreensuccess>
       CurvedAnimation(parent: _controller, curve: Curves.easeIn),
     );
 
-    _controller.forward(); // start tick animation
+    _controller.forward();
   }
 
   @override
@@ -51,7 +51,6 @@ class _Onboardingscreen2successState extends State<Onboardingscreensuccess>
           [
             25.heightBox,
 
-            // ✅ Image
             Image.asset(
               "assets/onBoard/book.jpg",
               height: 260,
@@ -60,7 +59,6 @@ class _Onboardingscreen2successState extends State<Onboardingscreensuccess>
 
             30.heightBox,
 
-            // ✅ Title
             "You're all set!"
                 .text
                 .white
@@ -71,18 +69,17 @@ class _Onboardingscreen2successState extends State<Onboardingscreensuccess>
 
             12.heightBox,
 
-            // ✅ Subtitle
             "Your library is ready. We've curated a\npersonalized feed just for you."
                 .text
                 .color(Colors.white60)
                 .lg
                 .align(TextAlign.center)
                 .make()
+                .centered()
                 .px20(),
 
             30.heightBox,
 
-            // ✅ Animated tick
             FadeTransition(
               opacity: _fade,
               child: ScaleTransition(
@@ -105,7 +102,6 @@ class _Onboardingscreen2successState extends State<Onboardingscreensuccess>
 
             const Spacer(),
 
-            // ✅ Finish button
             Container(
               height: 56,
               width: double.infinity,
@@ -120,18 +116,17 @@ class _Onboardingscreen2successState extends State<Onboardingscreensuccess>
                   ),
                 ],
               ),
-              child: HStack(
-                [
-                  const Spacer(),
-                  "Finish".text.white.bold.xl.make(),
-                  10.widthBox,
-                  const Icon(Icons.rocket_launch, color: Colors.white),
-                  const Spacer(),
-                ],
-              ),
-            ).px16().onInkTap(() {
-              Navigator.pushReplacementNamed(context, MyRoutes.homePage);
-            }),
+              child: "Finish"
+                  .text
+                  .white
+                  .bold
+                  .xl
+                  .make()
+                  .centered()
+                  .onInkTap(() {
+                    Navigator.pushReplacementNamed(context, MyRoutes.homePage);
+                  }),
+            ).px16(),
 
             16.heightBox,
           ],

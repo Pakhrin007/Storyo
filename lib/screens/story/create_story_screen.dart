@@ -368,7 +368,7 @@ final genres = [
                 HStack([
                   "GENRE".text.color(Colors.white54).sm.semiBold.make(),
                   const Spacer(),
-                  "Required".text.color(Colors.deepPurpleAccent).sm.make(),
+                  "Required".text.color(AppColors.accent).sm.make(),
                 ]),
                 12.heightBox,
 
@@ -384,7 +384,7 @@ final genres = [
                       ),
                       decoration: BoxDecoration(
                         color: active
-                            ? Colors.deepPurpleAccent
+                            ? AppColors.accent
                             : Colors.white.withOpacity(0.06),
                         borderRadius: BorderRadius.circular(22),
                         border: Border.all(
@@ -414,7 +414,7 @@ final genres = [
                 20.heightBox,
 
                 "ADD TAGS".text
-                    .color(Colors.deepPurpleAccent)
+                    .color(AppColors.accent)
                     .sm
                     .semiBold
                     .make(),
@@ -468,7 +468,7 @@ final genres = [
                 Container(
                   height: 56,
                   decoration: BoxDecoration(
-                    color: Colors.deepPurpleAccent,
+                    color: AppColors.accent,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: HStack([
@@ -513,8 +513,8 @@ final genres = [
       child: VStack([
         CircleAvatar(
           radius: 24,
-          backgroundColor: Colors.deepPurple.withOpacity(0.25),
-          child: Icon(icon, color: Colors.deepPurpleAccent),
+          backgroundColor: AppColors.accent.withOpacity(0.25),
+          child: Icon(icon, color: AppColors.accent),
         ),
         10.heightBox,
         title.text.white.semiBold.make(),

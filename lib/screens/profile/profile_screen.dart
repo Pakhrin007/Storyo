@@ -188,7 +188,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepPurpleAccent,
+                backgroundColor: AppColors.accent,
               ),
               onPressed: () async {
                 await _updateProfile();
@@ -458,7 +458,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   height: 42,
                   width: 180,
                   decoration: BoxDecoration(
-                    color: Colors.deepPurpleAccent,
+                    color: AppColors.accent,
                     borderRadius: BorderRadius.circular(24),
                   ),
                   child: HStack([
