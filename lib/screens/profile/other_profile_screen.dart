@@ -5,7 +5,6 @@ import 'package:storyo/core/colors.dart';
 import 'package:storyo/models/story_model.dart';
 import 'package:storyo/screens/reader/reader_screen.dart';
 import 'package:storyo/services/follow_service.dart';
-import 'package:velocity_x/velocity_x.dart';
 
 class OtherProfileScreen extends StatefulWidget {
   final String authorId;
@@ -24,62 +23,6 @@ class OtherProfileScreen extends StatefulWidget {
 }
 
 class _OtherProfileScreenState extends State<OtherProfileScreen> {
-  Future<void> _deleteStory(StoryModel story) async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('stories')
-          .doc(story.id)
-          .delete();
-
-      setState(() {
-        stories.removeWhere((s) => s.id == story.id);
-      });
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Story deleted successfully")),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to delete story: $e")));
-    }
-  }
-
-  void _showDeleteDialog(StoryModel story) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: const Text(
-          "Delete Story",
-          style: TextStyle(color: Colors.white),
-        ),
-        content: Text(
-          'Are you sure you want to delete "${story.title}"?',
-          style: const TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await _deleteStory(story);
-            },
-            child: const Text(
-              "Delete",
-              style: TextStyle(color: Colors.redAccent),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   final FollowService _followService = FollowService();
 
   List<StoryModel> stories = [];
@@ -89,7 +32,8 @@ class _OtherProfileScreenState extends State<OtherProfileScreen> {
   int _followerCount = 0;
   int _followingCount = 0;
 
-  final String _currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+  final String _currentUid =
+      FirebaseAuth.instance.currentUser?.uid ?? '';
 
   @override
   void initState() {
@@ -111,16 +55,12 @@ class _OtherProfileScreenState extends State<OtherProfileScreen> {
             .get(),
       ]);
 
-      final isFollowing = results[0] as bool;
-      final followerCount = results[1] as int;
-      final followingCount = results[2] as int;
-      final storySnap = results[3] as QuerySnapshot<Map<String, dynamic>>;
-
       setState(() {
-        _isFollowing = isFollowing;
-        _followerCount = followerCount;
-        _followingCount = followingCount;
-        stories = storySnap.docs
+        _isFollowing = results[0] as bool;
+        _followerCount = results[1] as int;
+        _followingCount = results[2] as int;
+        stories = (results[3] as QuerySnapshot<Map<String, dynamic>>)
+            .docs
             .map((doc) => StoryModel.fromFirestore(doc.data(), doc.id))
             .toList();
         loading = false;
@@ -128,9 +68,9 @@ class _OtherProfileScreenState extends State<OtherProfileScreen> {
     } catch (e) {
       setState(() => loading = false);
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to load profile: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        _snackBar("Failed to load profile: $e", error: true),
+      );
     }
   }
 
@@ -157,12 +97,78 @@ class _OtherProfileScreenState extends State<OtherProfileScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Action failed: $e")));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(_snackBar("Action failed: $e", error: true));
     } finally {
       if (mounted) setState(() => _followLoading = false);
     }
+  }
+
+  Future<void> _deleteStory(StoryModel story) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('stories')
+          .doc(story.id)
+          .delete();
+      setState(() => stories.removeWhere((s) => s.id == story.id));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(_snackBar("Story deleted successfully"));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(_snackBar("Failed to delete: $e", error: true));
+    }
+  }
+
+  void _showDeleteDialog(StoryModel story) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A22),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          "Delete Story",
+          style: TextStyle(
+            color: Colors.white,
+            fontFamily: 'libertin',
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to delete "${story.title}"?',
+          style: TextStyle(
+              color: Colors.white.withOpacity(0.6), height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("Cancel",
+                style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteStory(story);
+            },
+            child: const Text("Delete",
+                style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  SnackBar _snackBar(String msg, {bool error = false}) {
+    return SnackBar(
+      content: Text(msg),
+      backgroundColor:
+          error ? Colors.redAccent.shade200 : const Color(0xFF1E88FF),
+      behavior: SnackBarBehavior.floating,
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );
   }
 
   @override
@@ -171,198 +177,373 @@ class _OtherProfileScreenState extends State<OtherProfileScreen> {
     final username = email.isNotEmpty && email.contains('@')
         ? email.split('@').first
         : widget.authorName.toLowerCase().replaceAll(" ", "_");
-
     final isOwnProfile = _currentUid == widget.authorId;
 
     if (loading) {
       return const Scaffold(
-        backgroundColor: AppColors.secondary,
-        body: Center(child: CircularProgressIndicator()),
+        backgroundColor: Color(0xFF0C0C0F),
+        body: Center(
+          child: CircularProgressIndicator(
+              color: Color(0xFF1E88FF), strokeWidth: 2.5),
+        ),
       );
     }
 
     return Scaffold(
-      backgroundColor: AppColors.secondary,
+      backgroundColor: const Color(0xFF0C0C0F),
       body: SafeArea(
-        child: VStack([
-          HStack([
-            Icon(
-              Icons.arrow_back_ios_new,
+        child: Column(
+          children: [
+            _buildTopBar(),
+            Expanded(
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: _buildHeader(
+                        username, email, isOwnProfile),
+                  ),
+                  _buildStoriesHeader(),
+                  stories.isEmpty
+                      ? SliverFillRemaining(
+                          child: _emptyState(),
+                        )
+                      : SliverPadding(
+                          padding:
+                              const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, i) {
+                                final story = stories[i];
+                                return Padding(
+                                  padding:
+                                      const EdgeInsets.only(bottom: 12),
+                                  child: _StoryCard(
+                                    story: story,
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            ReaderScreen(story: story),
+                                      ),
+                                    ),
+                                    trailing: isOwnProfile
+                                        ? PopupMenuButton<String>(
+                                            icon: Icon(Icons.more_vert,
+                                                color: Colors.white
+                                                    .withOpacity(0.5),
+                                                size: 20),
+                                            color:
+                                                const Color(0xFF1A1A22),
+                                            onSelected: (value) {
+                                              if (value == 'delete') {
+                                                _showDeleteDialog(story);
+                                              }
+                                            },
+                                            itemBuilder: (_) => const [
+                                              PopupMenuItem(
+                                                value: 'delete',
+                                                child: Text('Delete',
+                                                    style: TextStyle(
+                                                        color: Colors
+                                                            .redAccent)),
+                                              ),
+                                            ],
+                                          )
+                                        : null,
+                                  ),
+                                );
+                              },
+                              childCount: stories.length,
+                            ),
+                          ),
+                        ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                color: Colors.white, size: 20),
+            onPressed: () => Navigator.pop(context),
+          ),
+          const Spacer(),
+          const Text(
+            'Profile',
+            style: TextStyle(
               color: Colors.white,
-            ).p8().onInkTap(() => Navigator.pop(context)),
-            const Spacer(),
-            "Profile".text.white.bold.xl2.make(),
-            const Spacer(),
-            48.widthBox,
-          ]).px8().py4(),
+              fontWeight: FontWeight.w700,
+              fontFamily: 'libertin',
+              fontSize: 22,
+              letterSpacing: 0.4,
+            ),
+          ),
+          const Spacer(),
+          const SizedBox(width: 48),
+        ],
+      ),
+    );
+  }
 
-          16.heightBox,
-
-          CircleAvatar(
-            radius: 50,
-            backgroundColor: Colors.white.withOpacity(0.08),
-            child: CircleAvatar(
-              radius: 46,
-              backgroundColor: AppColors.accent,
+  Widget _buildHeader(
+      String username, String email, bool isOwnProfile) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Column(
+        children: [
+          // Avatar
+          Container(
+            width: 92,
+            height: 92,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.accent,
+                  AppColors.accent.withOpacity(0.5),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.accent.withOpacity(0.3),
+                  blurRadius: 20,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Center(
               child: Text(
                 widget.authorName.isNotEmpty
                     ? widget.authorName[0].toUpperCase()
                     : "A",
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 30,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 34,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'libertin',
                 ),
               ),
             ),
-          ).centered(),
+          ),
 
-          14.heightBox,
+          const SizedBox(height: 16),
 
-          widget.authorName.text.white.bold.xl3.make().centered(),
-          6.heightBox,
-          ("@$username").text
-              .color(AppColors.accent)
-              .semiBold
-              .lg
-              .make()
-              .centered(),
+          Text(
+            widget.authorName,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'libertin',
+            ),
+          ),
+
+          const SizedBox(height: 5),
+
+          Text(
+            "@$username",
+            style: const TextStyle(
+              color: Color(0xFF1E88FF),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+            ),
+          ),
 
           if (email.isNotEmpty) ...[
-            8.heightBox,
-            email.text.color(Colors.white60).make().centered(),
+            const SizedBox(height: 4),
+            Text(
+              email,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.3),
+                fontSize: 12,
+              ),
+            ),
           ],
 
-          20.heightBox,
+          const SizedBox(height: 20),
 
           // Stats row
-          HStack([
-            _countBox(_followerCount.toString(), "FOLLOWERS"),
-            8.widthBox,
-            _countBox(_followingCount.toString(), "FOLLOWING"),
-            8.widthBox,
-            _countBox(stories.length.toString(), "STORIES"),
-          ]).px16(),
+          Row(
+            children: [
+              _statBox(_followerCount.toString(), "Followers"),
+              const SizedBox(width: 10),
+              _statBox(_followingCount.toString(), "Following"),
+              const SizedBox(width: 10),
+              _statBox(stories.length.toString(), "Stories"),
+            ],
+          ),
 
-          20.heightBox,
+          const SizedBox(height: 16),
 
-          // Follow / Unfollow button (hidden for own profile)
+          // Follow button
           if (!isOwnProfile)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-              child: GestureDetector(
-                onTap: _followLoading ? null : _toggleFollow,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  height: 46,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: _isFollowing
-                        ? Colors.white.withOpacity(0.08)
-                        : AppColors.accent,
-                    borderRadius: BorderRadius.circular(30),
-                    border: _isFollowing
-                        ? Border.all(color: Colors.white.withOpacity(0.2))
-                        : null,
-                  ),
-                  child: Center(
-                    child: _followLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Text(
-                            _isFollowing ? "Unfollow" : "Follow",
-                            style: TextStyle(
-                              color: _isFollowing
-                                  ? Colors.white70
-                                  : Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
+            GestureDetector(
+              onTap: _followLoading ? null : _toggleFollow,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                height: 46,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: _isFollowing
+                      ? Colors.white.withOpacity(0.07)
+                      : AppColors.accent,
+                  borderRadius: BorderRadius.circular(14),
+                  border: _isFollowing
+                      ? Border.all(
+                          color: Colors.white.withOpacity(0.12))
+                      : null,
+                  boxShadow: _isFollowing
+                      ? null
+                      : [
+                          BoxShadow(
+                            color: AppColors.accent.withOpacity(0.3),
+                            blurRadius: 14,
+                            offset: const Offset(0, 4),
                           ),
-                  ),
+                        ],
+                ),
+                child: Center(
+                  child: _followLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _isFollowing
+                                  ? Icons.person_remove_outlined
+                                  : Icons.person_add_outlined,
+                              color: _isFollowing
+                                  ? Colors.white60
+                                  : Colors.white,
+                              size: 17,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _isFollowing ? "Unfollow" : "Follow",
+                              style: TextStyle(
+                                color: _isFollowing
+                                    ? Colors.white60
+                                    : Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                                fontFamily: 'libertin',
+                              ),
+                            ),
+                          ],
+                        ),
                 ),
               ),
             ),
 
-          "Stories".text.white.bold.xl2.make().px16(),
-          12.heightBox,
-
-          Expanded(
-            child: stories.isEmpty
-                ? Center(
-                    child: "No published stories yet".text
-                        .color(Colors.white60)
-                        .lg
-                        .make(),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    itemCount: stories.length,
-                    itemBuilder: (context, index) {
-                      final story = stories[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _StoryCard(
-                          story: story,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ReaderScreen(story: story),
-                              ),
-                            );
-                          },
-                          trailing: PopupMenuButton<String>(
-                            icon: const Icon(
-                              Icons.more_vert,
-                              color: Colors.white70,
-                            ),
-                            color: Colors.black87,
-                            onSelected: (value) {
-                              if (value == 'edit') {
-                                // edit
-                              } else if (value == 'delete') {
-                                // delete
-                              }
-                            },
-                            itemBuilder: (context) => const [
-                              PopupMenuItem(value: 'edit', child: Text('Edit')),
-                              PopupMenuItem(
-                                value: 'delete',
-                                child: Text('Delete'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ]),
+          const SizedBox(height: 24),
+        ],
       ),
     );
   }
 
-  Widget _countBox(String value, String label) {
+  Widget _statBox(String value, String label) {
     return Expanded(
       child: Container(
-        height: 78,
+        padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.white.withOpacity(0.10)),
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(16),
+          border:
+              Border.all(color: Colors.white.withOpacity(0.07)),
         ),
-        child: VStack([
-          value.text.white.bold.xl2.make(),
-          6.heightBox,
-          label.text.color(Colors.white60).sm.make(),
-        ], alignment: MainAxisAlignment.center),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'libertin',
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.4),
+                fontSize: 11,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  SliverToBoxAdapter _buildStoriesHeader() {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+        child: Row(
+          children: [
+            Container(
+              width: 3,
+              height: 20,
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E88FF),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              "Stories",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'libertin',
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _emptyState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.auto_stories_outlined,
+              color: Colors.white12, size: 48),
+          const SizedBox(height: 14),
+          Text(
+            "No published stories yet",
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.35),
+              fontSize: 14,
+              fontFamily: 'libertin',
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -373,76 +554,110 @@ class _StoryCard extends StatelessWidget {
   final VoidCallback onTap;
   final Widget? trailing;
 
-  const _StoryCard({required this.story, required this.onTap, this.trailing});
+  const _StoryCard(
+      {required this.story, required this.onTap, this.trailing});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withOpacity(0.10)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.horizontal(
-              left: Radius.circular(18),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(18),
+          border:
+              Border.all(color: Colors.white.withOpacity(0.07)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.horizontal(
+                  left: Radius.circular(18)),
+              child: Container(
+                width: 86,
+                height: 116,
+                color: Colors.white.withOpacity(0.04),
+                child: story.coverUrl.isNotEmpty
+                    ? Image.network(
+                        story.coverUrl,
+                        width: 86,
+                        height: 116,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => _coverFallback(),
+                      )
+                    : _coverFallback(),
+              ),
             ),
-            child: Image.network(
-              story.coverUrl,
-              width: 90,
-              height: 120,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) {
-                return Container(
-                  width: 90,
-                  height: 120,
-                  color: Colors.white10,
-                  child: const Icon(Icons.broken_image, color: Colors.white54),
-                );
-              },
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: VStack([
-                Row(
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            story.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              fontFamily: 'libertin',
+                            ),
+                          ),
+                        ),
+                        if (trailing != null) trailing!,
+                      ],
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      story.author,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.45),
+                        fontSize: 12.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E88FF).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                            color: const Color(0xFF1E88FF)
+                                .withOpacity(0.2)),
+                      ),
                       child: Text(
-                        story.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        story.genre,
                         style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E88FF),
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.4,
                         ),
                       ),
                     ),
-                    if (trailing != null) trailing!,
                   ],
                 ),
-                6.heightBox,
-                Text(
-                  story.author,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white60),
-                ),
-                6.heightBox,
-                Text(
-                  "Genre: ${story.genre}",
-                  style: const TextStyle(color: Colors.white54),
-                ),
-              ], crossAlignment: CrossAxisAlignment.start),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ).onInkTap(onTap);
+    );
+  }
+
+  Widget _coverFallback() {
+    return Center(
+      child: Icon(Icons.auto_stories_outlined,
+          color: Colors.white.withOpacity(0.2), size: 28),
+    );
   }
 }

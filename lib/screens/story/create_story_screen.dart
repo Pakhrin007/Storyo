@@ -9,7 +9,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:storyo/core/colors.dart';
 import 'package:storyo/models/story_model.dart';
 import 'package:storyo/services/cloudinary_service.dart';
-import 'package:velocity_x/velocity_x.dart';
 
 class CreateStoryScreen extends StatefulWidget {
   final StoryModel? story;
@@ -22,20 +21,22 @@ class CreateStoryScreen extends StatefulWidget {
 
 class _CreateStoryScreenState extends State<CreateStoryScreen> {
   int selectedGenre = 0;
-final genres = [
-  "Fantasy",
-  "Sci-Fi",
-  "Mystery",
-  "Romance",
-  "Thriller",
-  "Horror",
-  "Adventure",
-  "Drama",
-  "Crime",
-  "Comedy",
-  "Historical",
-  "Action"
-];
+
+  final genres = [
+    "Fantasy",
+    "Sci-Fi",
+    "Mystery",
+    "Romance",
+    "Thriller",
+    "Horror",
+    "Adventure",
+    "Drama",
+    "Crime",
+    "Comedy",
+    "Historical",
+    "Action",
+  ];
+
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _tagsController = TextEditingController();
 
@@ -48,33 +49,30 @@ final genres = [
   bool _isUploading = false;
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.story != null) {
+      _titleController.text = widget.story!.title;
+      _tagsController.text = widget.story!.tags.join(', ');
+      final genreIndex = genres.indexOf(widget.story!.genre);
+      selectedGenre = genreIndex >= 0 ? genreIndex : 0;
+      _coverFileName = widget.story!.coverFileName;
+      _pdfFileName = widget.story!.pdfFileName;
+    }
+  }
+
+  @override
   void dispose() {
     _titleController.dispose();
     _tagsController.dispose();
     super.dispose();
   }
 
-  @override
-  void initState() {
-    super.initState();
-
-    if (widget.story != null) {
-      _titleController.text = widget.story!.title;
-      _tagsController.text = widget.story!.tags.join(', ');
-
-      final genreIndex = genres.indexOf(widget.story!.genre);
-      selectedGenre = genreIndex >= 0 ? genreIndex : 0;
-
-      _coverFileName = widget.story!.coverFileName;
-      _pdfFileName = widget.story!.pdfFileName;
-    }
-  }
-
   Future<void> _pickCoverImage() async {
     try {
       final picker = ImagePicker();
-      final XFile? picked = await picker.pickImage(source: ImageSource.gallery);
-
+      final XFile? picked =
+          await picker.pickImage(source: ImageSource.gallery);
       if (picked != null) {
         final bytes = await picked.readAsBytes();
         setState(() {
@@ -85,9 +83,8 @@ final genres = [
     } catch (e) {
       log("Cover image pick error: $e");
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Failed to pick cover image")),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(_snackBar("Failed to pick cover image", error: true));
     }
   }
 
@@ -98,17 +95,13 @@ final genres = [
         allowedExtensions: ['pdf'],
         withData: true,
       );
-
       if (result != null && result.files.isNotEmpty) {
         final file = result.files.first;
-
         if (file.bytes == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Could not read PDF file")),
-          );
+          ScaffoldMessenger.of(context)
+              .showSnackBar(_snackBar("Could not read PDF file", error: true));
           return;
         }
-
         setState(() {
           _pdfBytes = file.bytes;
           _pdfFileName = file.name;
@@ -117,9 +110,8 @@ final genres = [
     } catch (e) {
       log("PDF pick error: $e");
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Failed to pick PDF")));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(_snackBar("Failed to pick PDF", error: true));
     }
   }
 
@@ -127,7 +119,6 @@ final genres = [
     final user = FirebaseAuth.instance.currentUser;
     final title = _titleController.text.trim();
     final genre = genres[selectedGenre];
-
     final tags = _tagsController.text
         .split(',')
         .map((e) => e.trim())
@@ -135,52 +126,41 @@ final genres = [
         .toList();
 
     if (user == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Please login first")));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(_snackBar("Please login first", error: true));
       return;
     }
-
     if (title.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Please enter story title")));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(_snackBar("Please enter a story title", error: true));
       return;
     }
 
     final hasExistingCover =
         widget.story != null && widget.story!.coverUrl.isNotEmpty;
-
     final hasExistingPdf =
         widget.story != null && widget.story!.pdfUrl.isNotEmpty;
 
     if (_coverBytes == null && !hasExistingCover) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select a cover image")),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(_snackBar("Please select a cover image", error: true));
       return;
     }
-
     if (_pdfBytes == null && !hasExistingPdf) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Please select a PDF file")));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(_snackBar("Please select a PDF file", error: true));
       return;
     }
 
-    setState(() {
-      _isUploading = true;
-    });
+    setState(() => _isUploading = true);
 
     try {
       final isEditing = widget.story != null;
-
       final docRef = isEditing
           ? FirebaseFirestore.instance
-                .collection('stories')
-                .doc(widget.story!.id)
+              .collection('stories')
+              .doc(widget.story!.id)
           : FirebaseFirestore.instance.collection('stories').doc();
-
       final storyId = isEditing ? widget.story!.id : docRef.id;
 
       final authorName = user.displayName?.trim().isNotEmpty == true
@@ -192,16 +172,11 @@ final genres = [
 
       if (_coverBytes != null && _coverFileName != null) {
         coverUrl = await CloudinaryService.uploadImage(
-          bytes: _coverBytes!,
-          fileName: _coverFileName!,
-        );
+            bytes: _coverBytes!, fileName: _coverFileName!);
       }
-
       if (_pdfBytes != null && _pdfFileName != null) {
         pdfUrl = await CloudinaryService.uploadPdf(
-          bytes: _pdfBytes!,
-          fileName: _pdfFileName!,
-        );
+            bytes: _pdfBytes!, fileName: _pdfFileName!);
       }
 
       await docRef.set({
@@ -225,314 +200,387 @@ final genres = [
       }, SetOptions(merge: true));
 
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isEditing
-                ? "Story updated successfully"
-                : "Story published successfully",
-          ),
-        ),
-      );
-
+      ScaffoldMessenger.of(context).showSnackBar(_snackBar(
+          isEditing
+              ? "Story updated successfully"
+              : "Story published successfully"));
       Navigator.pop(context, true);
     } catch (e) {
       log("Publish story error: $e");
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Publish failed: $e")));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(_snackBar("Publish failed: $e", error: true));
     } finally {
-      if (mounted) {
-        setState(() {
-          _isUploading = false;
-        });
-      }
+      if (mounted) setState(() => _isUploading = false);
     }
   }
 
-  Future<void> _saveDraft() async {
-    final user = FirebaseAuth.instance.currentUser;
-    final title = _titleController.text.trim();
-    final genre = genres[selectedGenre];
-
-    final tags = _tagsController.text
-        .split(',')
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
-
-    if (user == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Please login first")));
-      return;
-    }
-
-    if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Enter title before saving draft")),
-      );
-      return;
-    }
-
-    try {
-      final docRef = FirebaseFirestore.instance.collection('stories').doc();
-      final storyId = docRef.id;
-
-      await docRef.set({
-        'id': storyId,
-        'title': title,
-        'genre': genre,
-        'tags': tags,
-        'coverUrl': null,
-        'pdfUrl': null,
-        'coverFileName': _coverFileName,
-        'pdfFileName': _pdfFileName,
-        'authorId': user.uid,
-        'authorEmail': user.email,
-        'status': 'draft',
-        'format': 'pdf',
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Draft saved")));
-    } catch (e) {
-      log("Save draft error: $e");
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Draft save failed: $e")));
-    }
+  SnackBar _snackBar(String msg, {bool error = false}) {
+    return SnackBar(
+      content: Text(msg),
+      backgroundColor:
+          error ? Colors.redAccent.shade200 : const Color(0xFF1E88FF),
+      behavior: SnackBarBehavior.floating,
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.story != null;
+
     return Scaffold(
-      backgroundColor: AppColors.secondary,
+      backgroundColor: const Color(0xFF0C0C0F),
       body: SafeArea(
-        child: VStack([
-          HStack([
-            Icon(
-              Icons.arrow_back_ios_new,
-              color: Colors.white,
-            ).p8().onInkTap(() => Navigator.pop(context)),
-            (widget.story != null ? "Edit\nStory" : "NewStory")
-                .text
-                .white
-                .bold
-                .xl2
-                .make()
-                .centered(),
-            const Spacer(),
-            
-          ]).px8(),
-          16.heightBox,
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 110),
-              children: [
-                "COVER PICTURE".text.color(Colors.white54).sm.semiBold.make(),
-                10.heightBox,
-                _dashedBox(
-                  icon: Icons.image_outlined,
-                  title: _coverFileName ?? "Add Cover Photo",
-                  subtitle: "JPG / PNG",
-                  onTap: _pickCoverImage,
-                ),
-                20.heightBox,
-
-                "STORY TITLE".text.color(Colors.white54).sm.semiBold.make(),
-                10.heightBox,
-                TextField(
-                  controller: _titleController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: "Enter your story title...",
-                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.35)),
-                    filled: true,
-                    fillColor: Colors.white.withOpacity(0.06),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
+        child: Column(
+          children: [
+            _buildTopBar(isEditing),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+                children: [
+                  _sectionLabel("Cover Picture"),
+                  const SizedBox(height: 10),
+                  _uploadBox(
+                    icon: Icons.image_outlined,
+                    title: _coverFileName ?? "Add Cover Photo",
+                    subtitle: "JPG or PNG",
+                    isSelected: _coverFileName != null,
+                    onTap: _pickCoverImage,
                   ),
-                ),
-                20.heightBox,
+                  const SizedBox(height: 24),
 
-                HStack([
-                  "GENRE".text.color(Colors.white54).sm.semiBold.make(),
-                  const Spacer(),
-                  "Required".text.color(AppColors.accent).sm.make(),
-                ]),
-                12.heightBox,
+                  _sectionLabel("Story Title"),
+                  const SizedBox(height: 10),
+                  _titleField(),
+                  const SizedBox(height: 24),
 
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: List.generate(genres.length, (i) {
-                    final active = i == selectedGenre;
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: active
-                            ? AppColors.accent
-                            : Colors.white.withOpacity(0.06),
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.08),
+                  Row(
+                    children: [
+                      _sectionLabel("Genre"),
+                      const Spacer(),
+                      const Text(
+                        "Required",
+                        style: TextStyle(
+                          color: Color(0xFF1E88FF),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      child: genres[i].text.white.semiBold.make(),
-                    ).onInkTap(() => setState(() => selectedGenre = i));
-                  }),
-                ),
-
-                22.heightBox,
-
-                "UPLOAD STORY PDF".text
-                    .color(Colors.white54)
-                    .sm
-                    .semiBold
-                    .make(),
-                10.heightBox,
-                _dashedBox(
-                  icon: Icons.picture_as_pdf,
-                  title: _pdfFileName ?? "Upload Story",
-                  subtitle: "PDF only",
-                  onTap: _pickPdf,
-                ),
-
-                20.heightBox,
-
-                "ADD TAGS".text
-                    .color(AppColors.accent)
-                    .sm
-                    .semiBold
-                    .make(),
-                10.heightBox,
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.04),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: Colors.white.withOpacity(0.08)),
+                    ],
                   ),
-                  child: TextField(
-                    controller: _tagsController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: "epic, dragons, magic",
-                      hintStyle: TextStyle(
-                        color: Colors.white.withOpacity(0.35),
-                      ),
-                      border: InputBorder.none,
+                  const SizedBox(height: 12),
+                  _genreChips(),
+                  const SizedBox(height: 24),
+
+                  _sectionLabel("Upload Story PDF"),
+                  const SizedBox(height: 10),
+                  _uploadBox(
+                    icon: Icons.picture_as_pdf_outlined,
+                    title: _pdfFileName ?? "Upload PDF",
+                    subtitle: "PDF only",
+                    isSelected: _pdfFileName != null,
+                    onTap: _pickPdf,
+                  ),
+                  const SizedBox(height: 24),
+
+                  _sectionLabel("Tags"),
+                  const SizedBox(height: 10),
+                  _tagsField(),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Separate tags with commas  •  e.g. epic, dragons, magic",
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.25),
+                      fontSize: 11.5,
                     ),
                   ),
-                ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      bottomSheet: _buildBottomBar(isEditing),
+    );
+  }
 
-                20.heightBox,
-
-                if (_coverFileName != null)
-                  "Selected cover: $_coverFileName".text
-                      .color(Colors.white70)
-                      .sm
-                      .make(),
-
-                if (_pdfFileName != null)
-                  "Selected PDF: $_pdfFileName".text
-                      .color(Colors.white70)
-                      .sm
-                      .make(),
-
-                20.heightBox,
-              ],
+  Widget _buildTopBar(bool isEditing) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                color: Colors.white, size: 20),
+            onPressed: () => Navigator.pop(context),
+          ),
+          const Spacer(),
+          Text(
+            isEditing ? 'Edit Story' : 'New Story',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'libertin',
+              fontSize: 22,
+              letterSpacing: 0.4,
             ),
           ),
-        ]),
-      ),
-      bottomSheet: Container(
-        color: AppColors.secondary,
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-        child: HStack([
-          Expanded(
-            child:
-                Container(
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: AppColors.accent,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: HStack([
-                    const Icon(Icons.rocket_launch, color: Colors.white),
-                    10.widthBox,
-                    (_isUploading
-                            ? (widget.story != null
-                                  ? "Updating..."
-                                  : "Publishing...")
-                            : (widget.story != null
-                                  ? "Update Story"
-                                  : "Publish Story"))
-                        .text
-                        .white
-                        .semiBold
-                        .make(),
-                  ], alignment: MainAxisAlignment.center),
-                ).onInkTap(() {
-                  if (!_isUploading) {
-                    _publishStory();
-                  }
-                }),
-          ),
-        ]),
+          const Spacer(),
+          const SizedBox(width: 48),
+        ],
       ),
     );
   }
 
-  Widget _dashedBox({
+  Widget _sectionLabel(String label) {
+    return Text(
+      label.toUpperCase(),
+      style: TextStyle(
+        color: Colors.white.withOpacity(0.4),
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.2,
+      ),
+    );
+  }
+
+  Widget _uploadBox({
     required IconData icon,
     required String title,
     required String subtitle,
+    required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return Container(
-      height: 130,
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withOpacity(0.15), width: 1),
-      ),
-      child: VStack([
-        CircleAvatar(
-          radius: 24,
-          backgroundColor: AppColors.accent.withOpacity(0.25),
-          child: Icon(icon, color: AppColors.accent),
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: 120,
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFF1E88FF).withOpacity(0.07)
+              : Colors.white.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFF1E88FF).withOpacity(0.4)
+                : Colors.white.withOpacity(0.1),
+            width: 1.5,
+          ),
         ),
-        10.heightBox,
-        title.text.white.semiBold.make(),
-        6.heightBox,
-        subtitle.text.color(Colors.white54).sm.make(),
-      ], alignment: MainAxisAlignment.center),
-    ).onInkTap(onTap);
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? const Color(0xFF1E88FF).withOpacity(0.15)
+                    : AppColors.accent.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isSelected ? Icons.check_circle_outline_rounded : icon,
+                color: isSelected
+                    ? const Color(0xFF1E88FF)
+                    : AppColors.accent,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.white70,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isSelected ? "Tap to replace" : subtitle,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.35),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  Widget _tagChip(String text) {
+  Widget _titleField() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
+        color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.10)),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
-      child: text.text.color(Colors.white70).make(),
+      child: TextField(
+        controller: _titleController,
+        style: const TextStyle(color: Colors.white, fontSize: 15),
+        decoration: InputDecoration(
+          hintText: "Enter your story title…",
+          hintStyle:
+              TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 15),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _genreChips() {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: List.generate(genres.length, (i) {
+        final active = i == selectedGenre;
+        return GestureDetector(
+          onTap: () => setState(() => selectedGenre = i),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+            decoration: BoxDecoration(
+              color: active
+                  ? AppColors.accent
+                  : Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: active
+                    ? AppColors.accent
+                    : Colors.white.withOpacity(0.08),
+              ),
+              boxShadow: active
+                  ? [
+                      BoxShadow(
+                        color: AppColors.accent.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      )
+                    ]
+                  : null,
+            ),
+            child: Text(
+              genres[i],
+              style: TextStyle(
+                color: active ? Colors.white : Colors.white54,
+                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _tagsField() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: TextField(
+        controller: _tagsController,
+        style: const TextStyle(color: Colors.white, fontSize: 14),
+        decoration: InputDecoration(
+          hintText: "epic, dragons, magic…",
+          hintStyle:
+              TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 14),
+          prefixIcon: Icon(Icons.label_outline_rounded,
+              color: Colors.white.withOpacity(0.3), size: 18),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomBar(bool isEditing) {
+    return Container(
+      color: const Color(0xFF0C0C0F),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+      child: GestureDetector(
+        onTap: _isUploading ? null : _publishStory,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          height: 54,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            gradient: _isUploading
+                ? null
+                : const LinearGradient(
+                    colors: [Color(0xFF1E88FF), Color(0xFF1565C0)],
+                  ),
+            color: _isUploading ? Colors.white10 : null,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: _isUploading
+                ? null
+                : [
+                    BoxShadow(
+                      color: const Color(0xFF1E88FF).withOpacity(0.3),
+                      blurRadius: 16,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+          ),
+          child: Center(
+            child: _isUploading
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: Colors.white,
+                    ),
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isEditing
+                            ? Icons.check_rounded
+                            : Icons.rocket_launch_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        isEditing ? "Update Story" : "Publish Story",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'libertin',
+                          fontSize: 16,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+      ),
     );
   }
 }

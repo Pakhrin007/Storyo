@@ -118,22 +118,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 alignment: Alignment.centerLeft,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "Continue Reading",
-                      style: TextStyle(
-                        color: Color(0xFF1E88FF),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      height: 2.5,
-                      width: 110,
-                      color: const Color(0xFF1E88FF),
-                    ),
-                  ],
                 ),
               ),
             ),
@@ -183,12 +167,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   ),
                   Spacer(),
                   Text(
-                    "SORT BY RECENT",
+                    "RECENT",
                     style: TextStyle(
-                      color: Color(0xFF1E88FF),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    color: Color(0xFF1E88FF),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                  ),
                   ),
                 ],
               ),
@@ -262,6 +247,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                               data['authorName'] ?? data['author'] ?? 'Unknown',
                           timeText: _formatLastRead(data['lastReadAt']),
                           coverUrl: data['coverUrl'] ?? '',
+                          genre: data['genre'] ?? '',
                         ),
                       );
                     },
@@ -281,12 +267,14 @@ class _LibraryBookTile extends StatelessWidget {
   final String author;
   final String timeText;
   final String coverUrl;
+  final String genre;
 
   const _LibraryBookTile({
     required this.title,
     required this.author,
     required this.timeText,
     required this.coverUrl,
+    required this.genre,
   });
 
   @override
@@ -309,7 +297,7 @@ class _LibraryBookTile extends StatelessWidget {
             image: coverUrl.isNotEmpty
                 ? DecorationImage(
                     image: NetworkImage(coverUrl),
-                    fit: BoxFit.cover,
+                    fit: BoxFit.contain,
                   )
                 : null,
           ),
@@ -336,6 +324,14 @@ class _LibraryBookTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              Text(
+                genre,
+                style: const TextStyle(
+                  color: Colors.blue,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               Text(
                 title,
                 maxLines: 2,
