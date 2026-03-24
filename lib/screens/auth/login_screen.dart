@@ -113,16 +113,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
 
-                10.heightBox,
+                // 10.heightBox,
 
-                /// 🔹 Forgot Password
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: "Forgot Password?".text
-                      .color(Colors.white70)
-                      .make()
-                      .px16(),
-                ),
+                // /// 🔹 Forgot Password
+                // Align(
+                //   alignment: Alignment.centerRight,
+                //   child: "Forgot Password?".text
+                //       .color(Colors.white70)
+                //       .make()
+                //       .px16(),
+                // ),
 
                 20.heightBox,
 

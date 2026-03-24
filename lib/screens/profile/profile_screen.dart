@@ -62,21 +62,23 @@ class _ProfileScreenState extends State<ProfileScreen>
           .delete();
       setState(() => stories.removeWhere((s) => s.id == story.id));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        _snackBar("Story deleted successfully"),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(_snackBar("Story deleted successfully"));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(_snackBar("Failed to delete story: $e", error: true));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(_snackBar("Failed to delete story: $e", error: true));
     }
   }
 
   SnackBar _snackBar(String msg, {bool error = false}) {
     return SnackBar(
       content: Text(msg),
-      backgroundColor:
-          error ? Colors.redAccent.shade200 : const Color(0xFF1E88FF),
+      backgroundColor: error
+          ? Colors.redAccent.shade200
+          : const Color(0xFF1E88FF),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );
@@ -87,13 +89,15 @@ class _ProfileScreenState extends State<ProfileScreen>
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A22),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Delete Story",
-            style: TextStyle(
-                color: Colors.white,
-                fontFamily: 'libertin',
-                fontWeight: FontWeight.w700)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          "Delete Story",
+          style: TextStyle(
+            color: Colors.white,
+            fontFamily: 'libertin',
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         content: Text(
           'Are you sure you want to delete "${story.title}"?',
           style: TextStyle(color: Colors.white.withOpacity(0.6), height: 1.5),
@@ -101,16 +105,17 @@ class _ProfileScreenState extends State<ProfileScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child:
-                Text("Cancel", style: TextStyle(color: Colors.white54)),
+            child: Text("Cancel", style: TextStyle(color: Colors.white54)),
           ),
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
               await _deleteStory(story);
             },
-            child: const Text("Delete",
-                style: TextStyle(color: Colors.redAccent)),
+            child: const Text(
+              "Delete",
+              style: TextStyle(color: Colors.redAccent),
+            ),
           ),
         ],
       ),
@@ -126,50 +131,60 @@ class _ProfileScreenState extends State<ProfileScreen>
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A22),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Edit Profile",
-            style: TextStyle(
-                color: Colors.white,
-                fontFamily: 'libertin',
-                fontWeight: FontWeight.w700)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          "Edit Profile",
+          style: TextStyle(
+            color: Colors.white,
+            fontFamily: 'libertin',
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               _dialogField(_fullNameController, "Full Name"),
               const SizedBox(height: 14),
-              _dialogField(_newPasswordController, "New Password",
-                  obscure: true),
+              _dialogField(
+                _newPasswordController,
+                "New Password",
+                obscure: true,
+              ),
               const SizedBox(height: 14),
-              _dialogField(_confirmPasswordController, "Confirm Password",
-                  obscure: true),
+              _dialogField(
+                _confirmPasswordController,
+                "Confirm Password",
+                obscure: true,
+              ),
             ],
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text("Cancel",
-                style: TextStyle(color: Colors.white54)),
+            child: Text("Cancel", style: TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.accent,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             onPressed: _updateProfile,
-            child: const Text("Save",
-                style: TextStyle(color: Colors.white)),
+            child: const Text("Save", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
   }
 
-  Widget _dialogField(TextEditingController controller, String label,
-      {bool obscure = false}) {
+  Widget _dialogField(
+    TextEditingController controller,
+    String label, {
+    bool obscure = false,
+  }) {
     return TextField(
       controller: controller,
       obscureText: obscure,
@@ -200,30 +215,30 @@ class _ProfileScreenState extends State<ProfileScreen>
     final confirmPassword = _confirmPasswordController.text;
 
     if (newName.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(_snackBar("Full name cannot be empty", error: true));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(_snackBar("Full name cannot be empty", error: true));
       return;
     }
 
     if (newPassword.isNotEmpty) {
       if (newPassword.length < 6) {
         ScaffoldMessenger.of(context).showSnackBar(
-            _snackBar("Password must be at least 6 characters", error: true));
+          _snackBar("Password must be at least 6 characters", error: true),
+        );
         return;
       }
       if (newPassword != confirmPassword) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(_snackBar("Passwords do not match", error: true));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(_snackBar("Passwords do not match", error: true));
         return;
       }
     }
 
     try {
       await user.updateDisplayName(newName);
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .set({
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'name': newName,
         'email': user.email,
         'updatedAt': FieldValue.serverTimestamp(),
@@ -234,8 +249,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       if (!mounted) return;
       Navigator.pop(context);
       setState(() => name = newName);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(_snackBar("Profile updated successfully"));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(_snackBar("Profile updated successfully"));
       await _loadProfile();
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
@@ -245,9 +261,55 @@ class _ProfileScreenState extends State<ProfileScreen>
       ScaffoldMessenger.of(context).showSnackBar(_snackBar(msg, error: true));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(_snackBar("Profile update failed: $e", error: true));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(_snackBar("Profile update failed: $e", error: true));
     }
+  }
+
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text("Logout", style: TextStyle(color: Colors.white)),
+        content: const Text(
+          "Are you sure you want to logout?",
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: const Text(
+              "Cancel",
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+
+              await FirebaseAuth.instance.signOut();
+
+              if (!mounted) return;
+
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                MyRoutes.loginScreen,
+                (r) => false,
+              );
+            },
+            child: const Text(
+              "Logout",
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadProfile() async {
@@ -267,9 +329,8 @@ class _ProfileScreenState extends State<ProfileScreen>
 
       if (userDoc.exists) {
         final data = userDoc.data()!;
-        name =
-            (data['name'] ?? data['fullName'] ?? user.displayName ?? "")
-                .toString();
+        name = (data['name'] ?? data['fullName'] ?? user.displayName ?? "")
+            .toString();
         email = (data['email'] ?? user.email ?? "").toString();
       } else {
         name = user.displayName ?? "User";
@@ -302,8 +363,9 @@ class _ProfileScreenState extends State<ProfileScreen>
     } catch (e) {
       setState(() => loading = false);
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(_snackBar("Failed to load profile: $e", error: true));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(_snackBar("Failed to load profile: $e", error: true));
     }
   }
 
@@ -314,7 +376,9 @@ class _ProfileScreenState extends State<ProfileScreen>
         backgroundColor: Color(0xFF0C0C0F),
         body: Center(
           child: CircularProgressIndicator(
-              color: Color(0xFF1E88FF), strokeWidth: 2.5),
+            color: Color(0xFF1E88FF),
+            strokeWidth: 2.5,
+          ),
         ),
       );
     }
@@ -340,11 +404,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     Expanded(
                       child: TabBarView(
                         controller: _tabController,
-                        children: [
-                          _storiesTab(),
-                          _likedTab(),
-                          _commentsTab(),
-                        ],
+                        children: [_storiesTab(), _likedTab(), _commentsTab()],
                       ),
                     ),
                   ],
@@ -364,8 +424,11 @@ class _ProfileScreenState extends State<ProfileScreen>
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                color: Colors.white, size: 20),
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
             onPressed: () => Navigator.pop(context),
           ),
           const Spacer(),
@@ -381,21 +444,24 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
           const Spacer(),
           IconButton(
-            icon: Icon(Icons.refresh_rounded,
-                color: Colors.white.withOpacity(0.6), size: 22),
+            icon: Icon(
+              Icons.refresh_rounded,
+              color: Colors.white.withOpacity(0.6),
+              size: 22,
+            ),
             onPressed: () async {
               setState(() => loading = true);
               await _loadProfile();
             },
           ),
           IconButton(
-            icon: const Icon(Icons.logout_rounded,
-                color: Colors.redAccent, size: 22),
-            onPressed: () async {
-              await FirebaseAuth.instance.signOut();
-              if (!context.mounted) return;
-              Navigator.pushNamedAndRemoveUntil(
-                  context, MyRoutes.loginScreen, (r) => false);
+            icon: const Icon(
+              Icons.logout_rounded,
+              color: Colors.redAccent,
+              size: 22,
+            ),
+            onPressed: () {
+              _showLogoutDialog();
             },
           ),
         ],
@@ -415,10 +481,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
-                colors: [
-                  AppColors.accent,
-                  AppColors.accent.withOpacity(0.5),
-                ],
+                colors: [AppColors.accent, AppColors.accent.withOpacity(0.5)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -513,7 +576,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (_) => const SearchUsersScreen()),
+                      builder: (_) => const SearchUsersScreen(),
+                    ),
                   ),
                 ),
               ),
@@ -572,9 +636,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       child: Container(
         height: 44,
         decoration: BoxDecoration(
-          color: primary
-              ? AppColors.accent
-              : Colors.white.withOpacity(0.06),
+          color: primary ? AppColors.accent : Colors.white.withOpacity(0.06),
           borderRadius: BorderRadius.circular(14),
           border: primary
               ? null
@@ -585,15 +647,18 @@ class _ProfileScreenState extends State<ProfileScreen>
                     color: AppColors.accent.withOpacity(0.3),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
-                  )
+                  ),
                 ]
               : null,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon,
-                color: primary ? Colors.white : Colors.white60, size: 17),
+            Icon(
+              icon,
+              color: primary ? Colors.white : Colors.white60,
+              size: 17,
+            ),
             const SizedBox(width: 7),
             Text(
               label,
@@ -667,18 +732,24 @@ class _ProfileScreenState extends State<ProfileScreen>
         final story = stories[i];
         return _StoryCard(
           story: story,
-          onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => ReaderScreen(story: story))),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => ReaderScreen(story: story)),
+          ),
           trailing: PopupMenuButton<String>(
-            icon: Icon(Icons.more_vert,
-                color: Colors.white.withOpacity(0.5), size: 20),
+            icon: Icon(
+              Icons.more_vert,
+              color: Colors.white.withOpacity(0.5),
+              size: 20,
+            ),
             color: const Color(0xFF1A1A22),
             onSelected: (value) async {
               if (value == 'edit') {
                 final result = await Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (_) => CreateStoryScreen(story: story)),
+                    builder: (_) => CreateStoryScreen(story: story),
+                  ),
                 );
                 if (result == true) _loadProfile();
               } else if (value == 'delete') {
@@ -692,8 +763,10 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
               const PopupMenuItem(
                 value: 'delete',
-                child:
-                    Text('Delete', style: TextStyle(color: Colors.redAccent)),
+                child: Text(
+                  'Delete',
+                  style: TextStyle(color: Colors.redAccent),
+                ),
               ),
             ],
           ),
@@ -712,10 +785,15 @@ class _ProfileScreenState extends State<ProfileScreen>
         final story = likedStories[i];
         return _StoryCard(
           story: story,
-          onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => ReaderScreen(story: story))),
-          trailing: const Icon(Icons.favorite_rounded,
-              color: Colors.redAccent, size: 18),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => ReaderScreen(story: story)),
+          ),
+          trailing: const Icon(
+            Icons.favorite_rounded,
+            color: Colors.redAccent,
+            size: 18,
+          ),
         );
       },
     );
@@ -736,16 +814,18 @@ class _ProfileScreenState extends State<ProfileScreen>
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.04),
             borderRadius: BorderRadius.circular(16),
-            border:
-                Border.all(color: Colors.white.withOpacity(0.07)),
+            border: Border.all(color: Colors.white.withOpacity(0.07)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  const Icon(Icons.auto_stories_outlined,
-                      color: Color(0xFF1E88FF), size: 13),
+                  const Icon(
+                    Icons.auto_stories_outlined,
+                    color: Color(0xFF1E88FF),
+                    size: 13,
+                  ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
@@ -783,8 +863,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.auto_stories_outlined,
-              color: Colors.white12, size: 48),
+          Icon(Icons.auto_stories_outlined, color: Colors.white12, size: 48),
           const SizedBox(height: 14),
           Text(
             message,
@@ -805,8 +884,10 @@ class _ProfileScreenState extends State<ProfileScreen>
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
       child: GestureDetector(
         onTap: () async {
-          final result =
-              await Navigator.pushNamed(context, MyRoutes.createStoryPage);
+          final result = await Navigator.pushNamed(
+            context,
+            MyRoutes.createStoryPage,
+          );
           if (result == true) {
             setState(() => loading = true);
             await _loadProfile();
@@ -859,8 +940,7 @@ class _StoryCard extends StatelessWidget {
   final VoidCallback onTap;
   final Widget? trailing;
 
-  const _StoryCard(
-      {required this.story, required this.onTap, this.trailing});
+  const _StoryCard({required this.story, required this.onTap, this.trailing});
 
   @override
   Widget build(BuildContext context) {
@@ -877,7 +957,8 @@ class _StoryCard extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: const BorderRadius.horizontal(
-                  left: Radius.circular(18)),
+                left: Radius.circular(18),
+              ),
               child: Container(
                 width: 86,
                 height: 116,
@@ -930,14 +1011,15 @@ class _StoryCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
-                        color:
-                            const Color(0xFF1E88FF).withOpacity(0.1),
+                        color: const Color(0xFF1E88FF).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(
-                            color: const Color(0xFF1E88FF)
-                                .withOpacity(0.2)),
+                          color: const Color(0xFF1E88FF).withOpacity(0.2),
+                        ),
                       ),
                       child: Text(
                         story.genre,
@@ -961,8 +1043,11 @@ class _StoryCard extends StatelessWidget {
 
   Widget _coverFallback() {
     return Center(
-      child: Icon(Icons.auto_stories_outlined,
-          color: Colors.white.withOpacity(0.2), size: 28),
+      child: Icon(
+        Icons.auto_stories_outlined,
+        color: Colors.white.withOpacity(0.2),
+        size: 28,
+      ),
     );
   }
 }
